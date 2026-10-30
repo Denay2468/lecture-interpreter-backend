@@ -1,0 +1,3 @@
+source: 'Waterfall itu kayak air terjun, tahap demi tahap, tidak boleh mundur.'
+translated: 'A waterfall is like a cascade—step by step—you can’t go back.'
+state: delivered

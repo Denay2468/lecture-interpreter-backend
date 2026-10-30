@@ -1,0 +1,3 @@
+source: 'Ada lagi gak yang mau kamu ceritain? Saya kira sudah ya mbak.'
+translated: 'Is there anything else you’d like to share? I think that’s it, ma’am.'
+state: delivered

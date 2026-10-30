@@ -1,0 +1,3 @@
+source: 'berapa sekilo nya'
+translated: 'How much is it per kilo?'
+state: delivered

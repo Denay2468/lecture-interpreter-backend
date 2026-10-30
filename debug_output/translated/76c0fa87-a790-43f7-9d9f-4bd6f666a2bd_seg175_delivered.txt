@@ -1,0 +1,3 @@
+source: 'dari Jogja mau nanya yang sambung kerajaan Jakarta'
+translated: "I'm from Yogyakarta and I have a question about the royal lineage in Jakarta"
+state: delivered

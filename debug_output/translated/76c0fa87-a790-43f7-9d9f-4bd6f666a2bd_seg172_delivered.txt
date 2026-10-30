@@ -1,0 +1,3 @@
+source: 'sih di tanah yang sebentar'
+translated: 'well, on the ground for a little while'
+state: delivered

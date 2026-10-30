@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLB - School admin</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="index.html">BLB <span>Break Language Barrier</span></a>
+    <span class="role"><span id="whoami"></span> <button id="signout" class="ghost small">Sign out</button></span></header>
+  <main class="container">
+    <section class="card">
+      <h1 id="school-name">Your school</h1>
+      <p id="usage-text" class="muted">Loading usage...</p>
+      <div class="meter" aria-hidden="true"><div id="usage-bar"></div></div>
+      <p id="page-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <h2>Lecturers</h2>
+      <p class="muted small">Invite lecturers with their staff email. They receive a code to set their own password; you never see it.</p>
+      <form id="invite-form" class="inline-form" novalidate>
+        <div><label for="inv-name">Name</label><input id="inv-name" type="text" autocomplete="off"></div>
+        <div><label for="inv-email">Staff email</label><input id="inv-email" type="email" autocomplete="off" spellcheck="false"></div>
+        <button class="primary" type="submit">Invite</button>
+      </form>
+      <p id="invite-status" class="status" role="status" aria-live="polite"></p>
+      <div class="table-wrap"><table id="lecturers"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section class="card">
+      <h2>Rooms</h2>
+      <p class="muted small">Lecturers create rooms from their own page. Students join with a room's code.</p>
+      <div class="table-wrap"><table id="rooms"><thead><tr><th>Room</th><th>Lecturer</th><th>Join code</th><th>Now</th><th></th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section class="card">
+      <h2>Recent lectures</h2>
+      <div class="table-wrap"><table id="sessions"><thead><tr><th>Room</th><th>Lecturer</th><th>Started</th><th>Length</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section class="card">
+      <h2>Email domains</h2>
+      <p class="muted small">Only people with an address on one of these domains can have an account at your school. To change them, contact BLB support.</p>
+      <ul id="domains" class="log"></ul>
+    </section>
+  </main>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

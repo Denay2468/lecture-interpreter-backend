@@ -1,0 +1,3 @@
+source: 'yang kamu suka dari kota Jakarta apa ini mas sodara seperti ini yang sederhana terus masih rame'
+translated: 'What do you like about Jakarta, bro? Is it that it’s simple yet still bustling like this?'
+state: delivered

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLB - Student</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="index.html">BLB <span>Break Language Barrier</span></a><span class="role"><span id="whoami"></span> <button id="signout" class="ghost small" hidden>Sign out</button></span></header>
+  <main class="container">
+    <section class="card" id="join-card">
+      <h1>Join your lecture</h1>
+      <p class="lead">Enter the room code shown in your classroom. You'll hear the lecture in English and see it as captions.</p>
+      <label for="code">Room code</label>
+      <input id="code" class="code-input" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. Q86UTY">
+      <div class="row">
+        <button id="join" class="primary">Join</button>
+        <button id="leave" class="ghost" hidden>Leave</button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <details class="advanced">
+        <summary>Advanced</summary>
+        <label for="server-url">Server address</label>
+        <input id="server-url" autocomplete="off" spellcheck="false">
+        <label class="check"><input type="checkbox" id="legacy"> Single-session mode (open this page as student.html?legacy=1 for a server running without a database)</label>
+      </details>
+    </section>
+
+    <section class="card" id="live-card" hidden>
+      <div class="live-head">
+        <span><span id="state-pill" class="pill">Connecting</span> <span id="mode-text" class="muted"></span></span>
+        <label class="check" style="margin:0"><input type="checkbox" id="sound" checked> Play translated audio</label>
+      </div>
+      <div id="sound-banner" class="banner warn" hidden>Your browser blocked audio. <button id="enable-sound" class="secondary small">Enable sound</button></div>
+      <div id="captions" class="captions" aria-live="polite">
+        <p id="empty-note" class="muted">Translations will appear here as the lecturer speaks.</p>
+      </div>
+    </section>
+
+    <section class="card" id="ask-card" hidden>
+      <h2>Ask a question</h2>
+      <p class="muted small">Speak English; the lecturer hears it in Indonesian. Use headphones so the lecture audio doesn't feed back into your microphone.</p>
+      <div class="meter" aria-hidden="true"><div id="level"></div></div>
+      <div class="row">
+        <button id="enable-mic" class="secondary">Enable microphone</button>
+        <button id="ask" class="ask-btn" disabled>Hold to ask</button>
+      </div>
+      <p id="ask-hint" class="muted small"></p>
+      <p id="mic-note" class="muted small">Once enabled, your browser shows the microphone as in use for the whole lecture. Nothing is sent unless you hold the button.</p>
+    </section>
+  </main>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/student.js"></script>
+</body>
+</html>

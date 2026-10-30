@@ -1,0 +1,3 @@
+source: 'ajal itu bekerja dalam bentuk pendek baru sedikit uji perbaiki ulangi'
+translated: "That's how it works: a short version, a few tests, fixes, and iterations."
+state: delivered

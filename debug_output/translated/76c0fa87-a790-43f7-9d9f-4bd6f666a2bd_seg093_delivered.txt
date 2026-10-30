@@ -1,0 +1,3 @@
+source: 'saya mau potong rambut'
+translated: 'I want to get a haircut'
+state: delivered

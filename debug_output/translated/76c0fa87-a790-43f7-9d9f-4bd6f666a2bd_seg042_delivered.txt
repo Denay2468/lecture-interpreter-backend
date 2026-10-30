@@ -1,0 +1,3 @@
+source: 'apakah Anda punya rekomendasi?'
+translated: 'Do you have any recommendations?'
+state: delivered

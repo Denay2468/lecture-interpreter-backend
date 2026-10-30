@@ -1,0 +1,3 @@
+source: 'Kelebihannya rencana jelas mudah dilacak itu kanannya kaku, sisa kalau ada perubahan di tengah jalan'
+translated: 'The advantage is that the plan is clear and easy to follow—it’s rigid, but if there are any changes along the way...'
+state: delivered

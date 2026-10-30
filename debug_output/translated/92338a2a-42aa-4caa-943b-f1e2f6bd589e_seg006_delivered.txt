@@ -1,0 +1,3 @@
+source: 'hias nih light 12 for 1II open my laptop and I want to look about my my OUT.'
+translated: 'Turn on the light 12 for 1II, open my laptop, and I want to check out my OUT.'
+state: delivered

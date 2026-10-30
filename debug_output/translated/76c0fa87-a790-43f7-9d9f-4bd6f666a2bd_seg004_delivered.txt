@@ -1,0 +1,3 @@
+source: 'Halo temanteman hari ini tidak ada kelas'
+translated: 'Hi, everyone! There are no classes today.'
+state: delivered

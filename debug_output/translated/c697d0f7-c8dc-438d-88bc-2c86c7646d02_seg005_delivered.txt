@@ -1,0 +1,3 @@
+source: 'Saya cinta kamu'
+translated: 'I love you'
+state: delivered

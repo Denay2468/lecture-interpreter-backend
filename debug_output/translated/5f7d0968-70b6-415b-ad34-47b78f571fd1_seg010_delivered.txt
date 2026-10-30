@@ -1,0 +1,3 @@
+source: 'Kalau ada yang bertanya kenapa proyek ini penting, Jawabannya satu kalimat.'
+translated: 'If anyone asks why this project is important, the answer is just one sentence.'
+state: delivered

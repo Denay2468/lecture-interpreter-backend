@@ -1,0 +1,3 @@
+source: 'jangan terlalu pendek. Siap, kirakira mau di potong berapa'
+translated: "Don't make it too short. Okay, how short do you want it cut?"
+state: delivered

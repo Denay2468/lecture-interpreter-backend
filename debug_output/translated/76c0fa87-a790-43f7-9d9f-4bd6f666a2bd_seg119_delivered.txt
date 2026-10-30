@@ -1,0 +1,3 @@
+source: 'tomatnya masih segar gak hari ini pagi bu tomatnya masih segar gak hari ini'
+translated: "Are the tomatoes still fresh this morning, ma'am? Are the tomatoes still fresh today?"
+state: delivered

@@ -1,0 +1,3 @@
+source: 'di kas'
+translated: 'on hand'
+state: delivered

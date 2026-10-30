@@ -1,0 +1,3 @@
+source: 'Karena orang ingin memantau lagi tapi persyaratan manual pada jadi kami bikin cukup dengan foto.'
+translated: 'Since people want to check again, but the process is manual, we’ve made it so that a photo is sufficient.'
+state: delivered

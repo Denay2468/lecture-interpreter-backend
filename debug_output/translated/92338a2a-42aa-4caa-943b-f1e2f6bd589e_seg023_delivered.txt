@@ -1,0 +1,3 @@
+source: 'projectnya itu tentang'
+translated: 'The project is about'
+state: delivered

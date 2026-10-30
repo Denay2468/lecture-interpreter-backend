@@ -1,0 +1,3 @@
+source: 'tentu, silakan duduk dulu.'
+translated: 'Sure, please have a seat.'
+state: delivered

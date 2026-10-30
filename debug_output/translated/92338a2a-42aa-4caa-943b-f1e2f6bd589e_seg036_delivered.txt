@@ -1,0 +1,3 @@
+source: 'Apa?'
+translated: 'What?'
+state: delivered

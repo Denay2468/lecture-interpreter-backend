@@ -1,0 +1,3 @@
+source: 'dari komponen yang jadi bukan ngebikin semen dan bata dari nol'
+translated: 'from pre-made components—not making cement and bricks from scratch'
+state: delivered

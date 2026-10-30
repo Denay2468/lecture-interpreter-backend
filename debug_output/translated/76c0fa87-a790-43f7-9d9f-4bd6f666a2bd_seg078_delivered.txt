@@ -1,0 +1,3 @@
+source: 'boleh nggak Pak'
+translated: 'Is that okay, sir?'
+state: delivered

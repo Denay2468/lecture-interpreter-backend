@@ -1,0 +1,3 @@
+source: 'tuh yang suka uang sampah Semarang tempat'
+translated: "That's the place in Semarang where people like to spend their spare change"
+state: delivered

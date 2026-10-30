@@ -1,0 +1,3 @@
+source: 'Wiji Wiji ada dimana ya'
+translated: 'Wiji, Wiji, where are you?'
+state: delivered

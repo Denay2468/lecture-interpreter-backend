@@ -1,0 +1,3 @@
+source: 'So, student we ask the question in the English.'
+translated: 'So, students, we’ll ask the question in English.'
+state: delivered

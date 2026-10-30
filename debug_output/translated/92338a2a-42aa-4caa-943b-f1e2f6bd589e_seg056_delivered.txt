@@ -1,0 +1,3 @@
+source: 'Proyek ini sebenarnya apa?'
+translated: 'What exactly is this project?'
+state: delivered

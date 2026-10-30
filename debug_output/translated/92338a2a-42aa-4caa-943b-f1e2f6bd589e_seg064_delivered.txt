@@ -1,0 +1,3 @@
+source: 'Aplikasi kami itu bikin otomatis, jadi kayak kita foto makanan'
+translated: "Our app does it automatically, so it's like taking a photo of food"
+state: delivered

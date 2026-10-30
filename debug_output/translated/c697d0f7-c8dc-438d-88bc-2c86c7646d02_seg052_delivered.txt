@@ -1,0 +1,3 @@
+source: 'Assalamualaikum Muhammad vollaikum'
+translated: 'Assalamu alaikum, Muhammad, and to you as well'
+state: delivered

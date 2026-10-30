@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLB - Lecturer</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="index.html">BLB <span>Break Language Barrier</span></a>
+    <span class="role"><span id="whoami"></span> <button id="signout" class="ghost small" hidden>Sign out</button></span></header>
+  <main class="container">
+    <section class="card" id="setup-card">
+      <h1>Start a lecture</h1>
+      <p class="lead">Your microphone streams to the interpreter while the lecture is live. Students hear the English version a couple of seconds behind you.</p>
+      <div id="room-block">
+        <label for="room-select">Room</label>
+        <select id="room-select"></select>
+        <p id="join-line" class="muted" hidden>Students join with the code <span id="join-code" class="join-code"></span></p>
+        <details class="advanced" id="new-room-box">
+          <summary>Create a new room</summary>
+          <label for="new-room-label">Room label</label>
+          <input id="new-room-label" type="text" autocomplete="off" placeholder="e.g. CS-302">
+          <label for="new-room-name">Name (optional)</label>
+          <input id="new-room-name" type="text" autocomplete="off" placeholder="e.g. Algorithms">
+          <div class="row"><button id="create-room" class="secondary" type="button">Create room</button></div>
+        </details>
+      </div>
+      <div class="row"><button id="start" class="primary">Start lecture</button></div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <details class="advanced">
+        <summary>Advanced</summary>
+        <label for="server-url">Server address</label>
+        <input id="server-url" type="text" autocomplete="off" spellcheck="false">
+        <label class="check"><input type="checkbox" id="legacy"> Single-session mode (open this page as teacher.html?legacy=1 for a server running without a database)</label>
+      </details>
+    </section>
+
+    <section class="card" id="live-card" hidden>
+      <div class="live-head">
+        <span><span id="state-pill" class="pill ok">Live</span></span>
+        <span id="timer" class="timer">00:00</span>
+        <button id="end" class="danger">End lecture</button>
+      </div>
+      <p id="live-join-line" class="muted" hidden>Students join with the code <span id="live-join-code" class="join-code"></span></p>
+      <div id="mode-banner" class="banner warn" hidden>A student is asking a question. Your microphone is paused until they finish.</div>
+      <p class="muted small" style="margin-top:14px">Microphone level</p>
+      <div class="meter" aria-hidden="true"><div id="level"></div></div>
+      <h2 style="margin-top:20px">Student questions</h2>
+      <p id="questions-empty" class="muted small">Questions are played to you in Indonesian as they arrive.</p>
+      <ul id="questions" class="log"></ul>
+      <p id="note" class="muted small"></p>
+    </section>
+  </main>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/teacher.js"></script>
+</body>
+</html>

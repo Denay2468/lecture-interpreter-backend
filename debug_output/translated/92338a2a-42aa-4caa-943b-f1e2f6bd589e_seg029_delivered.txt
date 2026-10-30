@@ -1,0 +1,3 @@
+source: 'Jadi kayak kami tuh foto makanan nya jadi nanti'
+translated: 'So, like, we take photos of the food, and then later'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'Atas salt night mode'
+translated: 'Top Salt Night Mode'
+state: delivered

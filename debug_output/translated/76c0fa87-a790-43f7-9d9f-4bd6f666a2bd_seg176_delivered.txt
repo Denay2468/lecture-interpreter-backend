@@ -1,0 +1,3 @@
+source: 'untuk perangkap apa nih main ke jalan'
+translated: "What's the point of going out on the street?"
+state: delivered

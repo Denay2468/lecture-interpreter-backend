@@ -1,0 +1,3 @@
+source: 'some drama'
+translated: 'some drama'
+state: delivered

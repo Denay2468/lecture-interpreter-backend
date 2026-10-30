@@ -1,0 +1,3 @@
+source: 'saya mau tanya tentang Jakarta nih bentar aja'
+translated: 'I’d like to ask a quick question about Jakarta.'
+state: delivered

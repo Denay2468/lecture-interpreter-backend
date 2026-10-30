@@ -1,0 +1,3 @@
+source: 'terus gak tau kenapa orangorang pada takut ketemu diwawancarai'
+translated: "I still don't know why people are so afraid of being interviewed"
+state: delivered

@@ -1,0 +1,3 @@
+source: 'boleh aja'
+translated: 'Sure, why not'
+state: delivered

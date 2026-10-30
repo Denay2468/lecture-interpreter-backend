@@ -1,0 +1,3 @@
+source: 'ribet dan sein'
+translated: 'complicated and turn signals'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'Sahabat, ini penting nih.'
+translated: 'Friends, this is important.'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'yang bertugas untuk menambah ini tuh makanan apa'
+translated: 'What kind of food is this supposed to be added to?'
+state: delivered

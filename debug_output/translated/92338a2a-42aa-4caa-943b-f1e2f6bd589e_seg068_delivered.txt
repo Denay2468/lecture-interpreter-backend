@@ -1,0 +1,3 @@
+source: 'nama makanannya itu dikira ke database sendiri'
+translated: 'The food name is entered into the database'
+state: delivered

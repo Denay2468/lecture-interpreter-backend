@@ -1,0 +1,3 @@
+source: 'asisten sudah siap'
+translated: 'The assistant is ready'
+state: delivered

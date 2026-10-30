@@ -1,0 +1,3 @@
+source: 'saya memotong rambut Halo'
+translated: 'I got a haircut. Hello'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'ada apa'
+translated: "What's going on?"
+state: delivered

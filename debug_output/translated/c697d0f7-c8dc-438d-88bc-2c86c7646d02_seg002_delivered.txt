@@ -1,0 +1,3 @@
+source: 'Akun nama'
+translated: 'Account name'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'nama saya Daniel saya tarik nyawa saya belajar informasi teknologi'
+translated: 'My name is Daniel. I’m studying information technology.'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'punya banyak nih language itu'
+translated: 'I know a lot of those languages'
+state: delivered

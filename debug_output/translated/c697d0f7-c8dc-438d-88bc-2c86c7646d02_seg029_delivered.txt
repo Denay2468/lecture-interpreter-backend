@@ -1,0 +1,3 @@
+source: 'Selama siang mahasiswa Sumual'
+translated: 'During the day, Sumual students'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'Waterfront memberi kepastian di awal. Angle memberi fleksibilitas di pengembangan. Karena itu kami pakai Hybrid supaya proyek terstruktur sekaligus fleksibel.'
+translated: 'Waterfront provides certainty from the start. Angle offers flexibility during development. That’s why we use Hybrid—to ensure the project is both structured and flexible.'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'Halo semuanya selamat pagi hari ini kita belajar dengan klub'
+translated: 'Hello, everyone! Good morning. Today we’re learning with the club.'
+state: delivered

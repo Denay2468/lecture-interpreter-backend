@@ -1,0 +1,3 @@
+source: 'Minta elminyo'
+translated: 'Ask for his phone'
+state: delivered

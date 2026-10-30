@@ -1,0 +1,3 @@
+source: 'apakah Anda memiliki kamar custom mana ini?'
+translated: 'Do you have this custom room?'
+state: delivered

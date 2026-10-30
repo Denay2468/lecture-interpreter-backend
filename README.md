@@ -1,4 +1,4 @@
-# Lecture Interpreter - Backend (MVP core)
+# Lecture Interpreter - Backend (MVP core) jjjjjjjj
 
 A real-time, two-way interpreter backend for multilingual classrooms. A teacher speaks Indonesian and the student hears English, continuously. The student can hold Ask to put a question to the teacher, which is translated back into Indonesian.
 

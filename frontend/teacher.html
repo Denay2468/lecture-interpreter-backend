@@ -50,9 +50,17 @@
       <ul id="questions" class="log"></ul>
       <p id="note" class="muted small"></p>
     </section>
+
+    <section class="card" id="history-card">
+      <h2>My recent lectures</h2>
+      <p id="history-empty" class="muted small">Lectures you teach will appear here, with who attended.</p>
+      <div class="table-wrap"><table id="history"><thead><tr><th>Room</th><th>Started</th><th>Length</th><th>Students</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div id="attendance-panel" class="attendance" hidden></div>
+    </section>
   </main>
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/attendance.js"></script>
   <script src="js/teacher.js"></script>
 </body>
 </html>

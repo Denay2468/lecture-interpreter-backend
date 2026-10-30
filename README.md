@@ -195,7 +195,7 @@ Test clients: `send_test_audio.py --room DEMO-101 --token <lecturer token>` and 
 
 ## Accounts, roles and the HTTP API
 
-One admin per school, who invites lecturers; students self-register. Everyone must use an email address on a domain their school registered, and must prove they own the mailbox with a one-time code before they get a password. A FastAPI app on port 8000 (docs at `/docs`) handles sign-up, sign-in, the admin dashboard and rooms; the WebSocket handshakes enforce the same role and school checks. Setup for a school is an operator task: `python tools/manage.py create-school ...`. Full details, the security model and its limits are in `docs/ACCOUNTS.md`.
+One admin per school, who invites lecturers; students self-register. Everyone must use an email address on a domain their school registered, and must prove they own the mailbox with a one-time code before they get a password. A FastAPI app on port 8000 (docs at `/docs`) handles sign-up, sign-in, the admin dashboard and rooms; the WebSocket handshakes enforce the same role and school checks. Setup for a school is an operator task: `python tools/manage.py create-school ...`. Attendance is recorded per lecture (who joined, for how long), visible to the lecturer who taught it and the school admin, with a CSV export. Full details, the security model and its limits are in `docs/ACCOUNTS.md`.
 
 ## Web frontend
 

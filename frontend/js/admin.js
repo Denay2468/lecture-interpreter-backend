@@ -86,10 +86,7 @@
 
   async function loadSessions() {
     const rows = await api.get("/admin/sessions?limit=25");
-    fillRows("sessions", rows, (tr, s) => {
-      cell(tr, s.room_code); cell(tr, s.lecturer_name); cell(tr, fmtDate(s.started_at)); cell(tr, fmtDuration(s.duration_seconds));
-      cell(tr, "").appendChild(badge(s.status === "LIVE" ? "Live" : s.status === "COMPLETED" ? "Completed" : "Interrupted", s.status === "LIVE" ? "ok" : s.status === "ABORTED" ? "warn" : ""));
-    });
+    BLB.attendance.renderSessions($("sessions").querySelector("tbody"), $("attendance-panel"), rows, { showLecturer: true });
   }
 
   async function loadDomains() {

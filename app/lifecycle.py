@@ -59,6 +59,20 @@ class SessionLifecycle:
             logger.info("Session %s completed (%s): %ds billable", session_id, reason, duration)
         return duration
 
+    async def student_joined(self, session_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Attendance is bookkeeping: if the database is unavailable it is logged and skipped, never raised into
+        the student's connection or the lecture."""
+        try:
+            await self._db.record_join(session_id, user_id)
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not record that %s joined lecture %s", user_id, session_id, exc_info=True)
+
+    async def student_left(self, session_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        try:
+            await self._db.record_leave(session_id, user_id)
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not record that %s left lecture %s", user_id, session_id, exc_info=True)
+
     async def recover_on_startup(self) -> int:
         """Settles sessions a previous process left LIVE. Assumes a single
         server instance; with several, use heartbeat-based reaping only."""

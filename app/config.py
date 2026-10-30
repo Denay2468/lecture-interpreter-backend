@@ -104,6 +104,11 @@ class Config:
     # "never silently discard in-flight work" pattern already used by
     # the Jitter Buffer's flush() and Teacher Audio Ingest's drain.
     translation_drain_timeout_s: float = 30.0
+    # Shared budget across both stages and retries, once a worker starts.
+    translation_segment_timeout_s: float = 30.0
+    # Includes WebSocket connect, reads and normal teardown, not each recv.
+    tts_total_timeout_s: float = 20.0
+    debug_audio_enabled: bool = False
 
     # --- Database / multi-tenant mode ---
     # Unset DATABASE_URL = single-session mode: no accounts, rooms or metering
@@ -178,6 +183,13 @@ def load_config(env_path: str | None = None) -> Config:
     cfg.translation_num_workers = _get("TRANSLATION_NUM_WORKERS", cfg.translation_num_workers)
     cfg.translation_max_attempts = _get("TRANSLATION_MAX_ATTEMPTS", cfg.translation_max_attempts)
     cfg.translation_drain_timeout_s = _get("TRANSLATION_DRAIN_TIMEOUT_S", cfg.translation_drain_timeout_s)
+    cfg.translation_segment_timeout_s = _get("TRANSLATION_SEGMENT_TIMEOUT_S", cfg.translation_segment_timeout_s)
+    cfg.tts_total_timeout_s = _get("TTS_TOTAL_TIMEOUT_S", cfg.tts_total_timeout_s)
+    cfg.debug_audio_enabled = os.getenv("DEBUG_AUDIO_ENABLED", "false").strip().lower() in ("1", "true", "yes")
+    if cfg.translation_segment_timeout_s <= 0 or cfg.tts_total_timeout_s <= 0:
+        raise ValueError("Translation and TTS timeouts must be positive")
+    if cfg.translation_num_workers < 1 or cfg.translation_max_attempts < 1:
+        raise ValueError("Translation workers and attempts must be at least one")
 
     cfg.database_url = os.getenv("DATABASE_URL") or cfg.database_url
     cfg.jwt_secret = os.getenv("JWT_SECRET") or cfg.jwt_secret

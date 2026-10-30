@@ -81,6 +81,8 @@ class SessionCoordinator:
         self._transcriber_factory = transcriber_factory or QuestionTranscriber
         self._transcriber = None
         self._bg_tasks: set = set()
+        self._question_tasks: set = set()
+        self._debug_tasks: set = set()
         self._teacher_ingest: Optional[TeacherAudioIngest] = None
         self._segmenter: Optional[Segmenter] = None
         self._translation_queue: Optional[TranslationQueue] = None
@@ -170,11 +172,10 @@ class SessionCoordinator:
         playback = StudentPlaybackController(session_id)
 
         def on_translated(result: TranslatedSegment) -> None:
-            # Composed, not swapped: keep writing debug files for manual
-            # inspection *and* feed the real playback reorder buffer, so
-            # this stays verifiable even while a real student is connected.
-            write_debug_output(self._cfg, result)
+            # Deliver first. Optional diagnostics cannot block the event loop
+            # or prevent this sequence from reaching the reorder buffer.
             playback.submit(result)
+            self._schedule_debug(result)
 
         translation_queue = TranslationQueue(self._cfg, session_id, on_translated=on_translated)
         translation_queue.start()
@@ -200,7 +201,36 @@ class SessionCoordinator:
             await self._detach_current()
             logger.info("Teacher session %s detached", session_id)
 
+    def _schedule_debug(self, result: TranslatedSegment) -> None:
+        if not self._cfg.debug_audio_enabled:
+            return
+        # Bound diagnostic work. Only diagnostics may be skipped; audio is
+        # already submitted to playback and is never discarded here.
+        if len(self._debug_tasks) >= 8:
+            logger.warning("Debug writer busy; skipping diagnostic segment %d", result.sequence)
+            return
+
+        async def write() -> None:
+            try:
+                await asyncio.to_thread(write_debug_output, self._cfg, result)
+            except Exception:
+                logger.exception("Debug output failed for segment %d", result.sequence)
+
+        task = asyncio.create_task(write())
+        self._debug_tasks.add(task)
+        task.add_done_callback(self._debug_tasks.discard)
+
     async def _detach_current(self) -> None:
+        # Cancel questions before closing the shared translation HTTP pool.
+        # Otherwise an old question can deliver to a replacement session.
+        questions = list(self._question_tasks)
+        for task in questions:
+            task.cancel()
+        if questions:
+            await asyncio.gather(*questions, return_exceptions=True)
+        if self._transcriber is not None:
+            await self._transcriber.abort()
+            self._transcriber = None
         # Order matters, each step depends on the previous one having
         # fully stopped: stop ingest first (no new frames arrive
         # mid-shutdown), then the segmenter (flushes its final partial
@@ -290,7 +320,9 @@ class SessionCoordinator:
         # the background so handle_ask_release (and the mode switch
         # above) returns immediately. The teacher resumes instantly;
         # the question's translation catches up whenever it's ready.
-        asyncio.create_task(self._process_and_deliver_question(captured_audio, transcriber))
+        task = asyncio.create_task(self._process_and_deliver_question(captured_audio, transcriber))
+        self._question_tasks.add(task)
+        task.add_done_callback(self._question_tasks.discard)
 
     async def handle_student_disconnect(self) -> None:
         """Called by the server when the student's connection ends.
@@ -362,8 +394,19 @@ class SessionCoordinator:
 
     async def _process_and_deliver_question(self, audio: bytes, transcriber=None) -> None:
         session_id = self._teacher_session_id or "no-active-teacher"
-        result: QuestionResult = await process_question(self._cfg, session_id, audio, transcriber=transcriber)
-        await self._handle_question_result(result)
+        translate = self._translation_queue.translate_question if self._translation_queue is not None else None
+        try:
+            result: QuestionResult = await process_question(
+                self._cfg, session_id, audio, transcriber=transcriber, translate_fn=translate,
+            )
+            await self._handle_question_result(result)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Question processing or delivery failed for session %s", session_id)
+        finally:
+            if transcriber is not None:
+                await transcriber.abort()
 
     async def _handle_question_result(self, result: QuestionResult) -> None:
         if result.success:

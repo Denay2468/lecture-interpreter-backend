@@ -1,9 +1,136 @@
-"""Translation Queue + Pipeline — architecture spec Section 4 (Queue
-Behavior) and Section 7 (Failure Handling).
+"""Translation Queue + Pipeline with Slang Normalization, Course Glossary, TTS Fallback & Telemetry."""
+from __future__ import annotations
 
-Consumes finalized Segments (produced by Segmentation — STT already
-happened, so this stage is just MT -> TTS) via `enqueue()`, wired as
-Segmenter's `on_segment` callback.
+import asyncio
+import base64
+import json
+import logging
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Awaitable, Callable, Optional, Union
+
+from app.slang_glossary import preprocess_text
+from app.telemetry import telemetry_tracker
+
+logger = logging.getLogger(__name__)
+
+TranslateFn = Callable[[str], Awaitable[str]]
+TtsFn = Callable[[str], Awaitable[Union[bytes, str, Path]]]
+
+@dataclass
+class SegmentItem:
+    seg_id: str
+    text_id: str
+    speaker_id: str = "lecturer"
+    timestamp: float = 0.0
+
+@dataclass
+class TranslationResult:
+    seg_id: str
+    text_id: str
+    text_en: str
+    audio_b64: Optional[str] = None
+    speaker_id: str = "lecturer"
+    error: Optional[str] = None
+    latency_ms: float = 0.0
+
+class TranslationPipeline:
+    def __init__(self, translate_fn: Optional[TranslateFn] = None, tts_fn: Optional[TtsFn] = None):
+        self.translate_fn = translate_fn
+        self.tts_fn = tts_fn
+        self.queue: asyncio.Queue[SegmentItem] = asyncio.Queue()
+        self.output_callbacks: list[Callable[[TranslationResult], Awaitable[None]]] = []
+        self._worker_task: Optional[asyncio.Task] = None
+        self._running = False
+
+    def add_output_callback(self, cb: Callable[[TranslationResult], Awaitable[None]]):
+        self.output_callbacks.append(cb)
+
+    async def enqueue(self, item: SegmentItem):
+        await self.queue.put(item)
+
+    async def start(self):
+        if self._running:
+            return
+        self._running = True
+        self._worker_task = asyncio.create_task(self._worker_loop())
+
+    async def stop(self):
+        self._running = False
+        if self._worker_task:
+            self._worker_task.cancel()
+            try:
+                await self._worker_task
+            except asyncio.CancelledError:
+                pass
+
+    async def _worker_loop(self):
+        while self._running:
+            try:
+                item = await self.queue.get()
+                result = await self.process_segment(item)
+                for cb in self.output_callbacks:
+                    try:
+                        await cb(result)
+                    except Exception as e:
+                        logger.error(f"Error in translation output callback: {e}")
+                self.queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Unexpected error in translation worker loop: {e}")
+
+    async def process_segment(self, item: SegmentItem) -> TranslationResult:
+        start_time = time.time()
+        
+        normalized_text_id = preprocess_text(item.text_id)
+        
+        text_en = normalized_text_id
+        audio_b64 = None
+        error_msg = None
+
+        if self.translate_fn:
+            try:
+                text_en = await self.translate_fn(normalized_text_id)
+            except Exception as e:
+                logger.error(f"MT Translation error for seg {item.seg_id}: {e}")
+                error_msg = str(e)
+                text_en = normalized_text_id
+
+        if self.tts_fn and text_en:
+            try:
+                tts_output = await asyncio.wait_for(self.tts_fn(text_en), timeout=3.5)
+                if isinstance(tts_output, bytes):
+                    audio_b64 = base64.b64encode(tts_output).decode("utf-8")
+                elif isinstance(tts_output, str):
+                    audio_b64 = tts_output
+                elif isinstance(tts_output, Path) and tts_output.exists():
+                    audio_b64 = base64.b64encode(tts_output.read_bytes()).decode("utf-8")
+            except Exception as e:
+                logger.warning(f"TTS generation failed/timed out for seg {item.seg_id}, sending subtitle-only fallback: {e}")
+                audio_b64 = None
+
+        elapsed_ms = (time.time() - start_time) * 1000.0
+
+        telemetry_tracker.record_segment(
+            latency_ms=elapsed_ms,
+            success=(error_msg is None),
+            audio_duration_sec=2.5,
+            deepl_chars=len(normalized_text_id),
+            tts_chars=len(text_en) if audio_b64 else 0
+        )
+
+        return TranslationResult(
+            seg_id=item.seg_id,
+            text_id=item.text_id,
+            text_en=text_en,
+            audio_b64=audio_b64,
+            speaker_id=item.speaker_id,
+            error=error_msg,
+            latency_ms=round(elapsed_ms, 2)
+        )
+.
 
 Implements the queue model from the spec directly:
   - Strict FIFO. No segment is ever dropped for being "old" — see

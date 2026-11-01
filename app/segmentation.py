@@ -1,9 +1,63 @@
-"""Segmentation — architecture spec Section 1/2/8 ("hybrid trigger").
+"""Segmentation — architecture spec Section 1/2/"""
+Segmentation module with hybrid trigger and Clause-Level Streaming ("Tektokan" mode).
+"""
+from __future__ import annotations
 
-Consumes the jitter-smoothed audio stream (via the `handle_frame`
-method, wired as TeacherAudioIngest's `on_smoothed_frame` callback) and
-cuts it into discrete Segments using two signals from Deepgram's
-streaming STT, matching the spec's "STT completion primary, VAD silence
+import asyncio
+import logging
+import re
+import time
+from dataclasses import dataclass
+from typing import Awaitable, Callable, Optional, List
+
+logger = logging.getLogger(__name__)
+
+CLAUSE_DELIMITERS = re.compile(r"([,;.\?\!\n]|(?<=\s)(?:dan|tapi|yang|untuk|karena|sehingga)(?=\s))", re.IGNORECASE)
+
+@dataclass
+class ClauseChunk:
+    chunk_id: str
+    text: str
+    is_final: bool
+    timestamp: float
+
+class ClauseStreamer:
+    """
+    Clause-level streaming ("tektokan" mode) processor.
+    Splits interim and final transcripts into fast, stable clause chunks.
+    """
+    def __init__(self, min_clause_length: int = 15):
+        self.min_clause_length = min_clause_length
+        self.buffer = ""
+
+    def process_interim(self, text: str) -> List[ClauseChunk]:
+        chunks = []
+        if not text:
+            return chunks
+
+        parts = CLAUSE_DELIMITERS.split(text)
+        current = ""
+        for i, part in enumerate(parts):
+            current += part
+            if len(current.strip()) >= self.min_clause_length and (i < len(parts) - 1 or len(parts) == 1):
+                chunk_id = f"clause_{int(time.time()*1000)}_{len(chunks)}"
+                chunks.append(ClauseChunk(chunk_id=chunk_id, text=current.strip(), is_final=False, timestamp=time.time()))
+                current = ""
+        return chunks
+
+class Segmenter:
+    def __init__(self, max_segment_duration: float = 12.0, clause_mode: bool = True):
+        self.max_segment_duration = max_segment_duration
+        self.clause_mode = clause_mode
+        self.clause_streamer = ClauseStreamer()
+        self._current_text = ""
+        self._last_speech_time = time.time()
+
+    def handle_transcript(self, text: str, is_final: bool = False) -> Optional[List[ClauseChunk]]:
+        if self.clause_mode and not is_final:
+            return self.clause_streamer.process_interim(text)
+        return None
+ primary, VAD silence
 fallback" design:
 
   PRIMARY trigger  -> Deepgram's `speech_final` flag on a Results

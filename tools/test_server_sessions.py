@@ -110,7 +110,8 @@ async def run(db: Database) -> None:
     room_b, code_b = await s.room(inst)
     label_a = await label_of(pool, room_a)
     token = mint_token(lec, SECRET)
-    stu_tok = mint_token(await s.user(inst, role="STUDENT"), SECRET, role="STUDENT")
+    stu_id = await s.user(inst, role="STUDENT")
+    stu_tok = mint_token(stu_id, SECRET, role="STUDENT")
     base = f"ws://localhost:{PORT}"
 
     def teacher(label, tok=None, extra=""):
@@ -174,6 +175,10 @@ async def run(db: Database) -> None:
             check(got == 4412, f"a valid code with no live lecture is told to retry (got {got}: {reason!r})")
             async with websockets.connect(student(code_a.lower())) as st:
                 check(await first_message(st) == LECTURE, "a student joins with a lowercase code and is told the mode")
+
+                async def recorded():
+                    return await pool.fetchval("SELECT connected_since IS NOT NULL FROM session_participants WHERE session_id = $1 AND user_id = $2", sid, stu_id) is True
+                check(await wait_until(recorded), "the student's attendance is recorded as soon as they join")
                 got, reason, _ = await attempt(student(code_a))
                 check(got == 4409, f"a second student is refused rather than stealing segments (got {got}: {reason!r})")
                 await t.close()
@@ -186,6 +191,10 @@ async def run(db: Database) -> None:
         async def done():
             return (await latest(pool, room_a))["status"] == "COMPLETED"
         check(await wait_until(done), "the session is COMPLETED after the teacher disconnects")
+        att = await pool.fetchrow("SELECT connected_since, last_left_at, connections FROM session_participants WHERE session_id = $1 AND user_id = $2", sid, stu_id)
+        check(att is not None and att["connected_since"] is None and att["last_left_at"] is not None and att["connections"] == 1,
+              "when the lecture ends their attendance is closed")
+        check(await pool.fetchval("SELECT count(*) FROM session_participants WHERE session_id = $1", sid) == 1, "students who were refused were never recorded")
         row = await latest(pool, room_a)
         check(row["end_reason"] == "teacher_disconnected" and row["duration_seconds"] is not None and row["duration_seconds"] >= 0,
               f"the reason and billable seconds are recorded ({row['end_reason']}, {row['duration_seconds']}s)")

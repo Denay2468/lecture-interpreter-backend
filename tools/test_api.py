@@ -157,6 +157,44 @@ async def run(db: Database) -> None:
         check(usage["used_seconds"] >= 1800 and usage["limit_seconds"] == 36000, "usage counts the lecture against the monthly limit")
         check((await c.get("/admin/email-domains", headers=bearer(admin_tok))).json()[0]["domain"] in (dom, f"student.{dom}"), "the admin can see (not edit) the school's email domains")
 
+        print("\ntest_attendance")
+        kim_id = (await c.get("/me", headers=bearer(stu_tok))).json()["id"]
+        sid = await db.pool.fetchval(
+            "INSERT INTO lecture_sessions (institution_id, room_id, lecturer_id, status, started_at, ended_at, duration_seconds, end_reason) "
+            "VALUES ($1,$2,$3,'COMPLETED', now() - interval '30 minutes', now(), 1800, 'test') RETURNING id", inst, uuid.UUID(room["id"]), uuid.UUID(lec_id))
+        evil = await db.pool.fetchval(
+            "INSERT INTO users (institution_id, email, password_hash, full_name, role, email_verified_at) VALUES ($1,$2,'!',$3,'STUDENT', now()) RETURNING id",
+            inst, f"evil@student.{dom}", '=HYPERLINK("http://x","click")')
+        ins = ("INSERT INTO session_participants (session_id, institution_id, user_id, first_joined_at, last_left_at, connected_seconds, connections) "
+               "VALUES ($1,$2,$3, now() - interval '29 minutes', now(), $4, $5)")
+        await db.pool.execute(ins, sid, inst, uuid.UUID(kim_id), 1500, 2)
+        await db.pool.execute(ins, sid, inst, evil, 600, 1)
+        r = await c.get(f"/sessions/{sid}/attendance", headers=bearer(lec_tok))
+        data = r.json()
+        by = {a["email"]: a for a in data["attendees"]}
+        kim = by.get(f"kim@student.{dom}", {})
+        check(r.status_code == 200 and len(data["attendees"]) == 2 and data["session"]["room_code"] == "CS-302", "the lecturer who taught it sees who attended")
+        check(kim.get("connected_seconds") == 1500 and kim.get("percent") == 83 and kim.get("connections") == 2 and kim.get("connected_now") is False,
+              "each attendee shows time connected, percent of the lecture, and how many times they connected")
+        check(by[f"evil@student.{dom}"]["percent"] == 33, "percentages are per attendee (600 of 1800 s = 33%)")
+        check((await c.get(f"/sessions/{sid}/attendance", headers=bearer(tok2))).status_code == 403, "another lecturer can't see it")
+        check((await c.get(f"/sessions/{sid}/attendance", headers=bearer(admin_tok))).status_code == 200, "the school admin can")
+        check((await c.get(f"/sessions/{sid}/attendance", headers=bearer(o_tok))).status_code == 404, "another school's admin gets 404")
+        check((await c.get(f"/sessions/{sid}/attendance", headers=bearer(stu_tok))).status_code == 403, "a student can't see anyone's attendance")
+        check((await c.get(f"/sessions/{sid}/attendance")).status_code == 401, "and neither can an unauthenticated caller")
+        check((await c.get(f"/sessions/{uuid.uuid4()}/attendance", headers=bearer(lec_tok))).status_code == 404, "an unknown lecture is 404")
+        mine = (await c.get("/sessions", headers=bearer(lec_tok))).json()
+        check(any(s["id"] == str(sid) and s["attendee_count"] == 2 for s in mine), "a lecturer's lecture list shows attendee counts")
+        check((await c.get("/sessions", headers=bearer(tok2))).json() == [], "another lecturer's list doesn't include it")
+        adm = (await c.get("/admin/sessions", headers=bearer(admin_tok))).json()
+        check(any(s["id"] == str(sid) and s["attendee_count"] == 2 for s in adm), "the admin's list shows attendee counts too")
+        r = await c.get(f"/sessions/{sid}/attendance.csv", headers=bearer(lec_tok))
+        body = r.content.decode("utf-8")
+        check(r.status_code == 200 and r.headers["content-type"].startswith("text/csv") and "attachment" in r.headers["content-disposition"]
+              and "CS-302" in r.headers["content-disposition"] and body.startswith("\ufeffName,Email"), "the attendance sheet downloads as a CSV that Excel reads as UTF-8")
+        check("'=HYPERLINK" in body and "\n=HYPERLINK" not in body and ",83," in body, "a student whose name looks like a spreadsheet formula is defused in the CSV")
+        check((await c.get(f"/sessions/{sid}/attendance.csv", headers=bearer(tok2))).status_code == 403, "the CSV has the same permissions")
+
         print("\ntest_sessions_over_http")
         login = (await c.post("/auth/login", json={"email": f"teacher@{dom}", "password": PW})).json()
         r = await c.post("/auth/refresh", json={"refresh_token": login["refresh_token"]})

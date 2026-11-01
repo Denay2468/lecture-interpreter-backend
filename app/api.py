@@ -7,7 +7,10 @@ school's record answers 404, the same as a record that doesn't exist.
 """
 from __future__ import annotations
 
+import csv
+import io
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import Optional
@@ -133,6 +136,16 @@ def _user_out(u: AuthUser) -> dict:
 
 def _rec(row) -> dict:
     return {k: (str(v) if isinstance(v, uuid.UUID) else v) for k, v in dict(row).items()}
+
+
+def _csv_cell(value) -> str:
+    """Names are typed by students, and a spreadsheet treats a cell starting with = + - @ as a formula. Defuse them."""
+    s = "" if value is None else str(value)
+    return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
+
+
+def _percent(connected: int, length: Optional[int]) -> int:
+    return min(100, round(100 * connected / length)) if length and length > 0 else 0
 
 
 def _tokens(ctx: Ctx, user: AuthUser, refresh_token: str) -> dict:
@@ -317,6 +330,44 @@ def create_app(cfg: Config, db: Database, accounts: Accounts, limits: Optional[L
         return {"join_code": await accounts.rotate_join_code(user.institution_id, room_id)}
 
     # ---- students ----------------------------------------------------------------------------------------------------
+    # ---- who attended (the lecturer who taught it, or the school admin) --------------------------------------------
+    async def own_session(user: AuthUser, session_id: uuid.UUID):
+        s = await accounts.get_session(user.institution_id, session_id)
+        if s is None:
+            raise HTTPException(404, "Lecture not found.")
+        if user.role != "ADMIN" and s["lecturer_id"] != user.id:
+            raise HTTPException(403, "Only the lecturer who taught this lecture, or the school admin, can see who attended.")
+        return s
+
+    @app.get("/sessions")
+    async def my_sessions(limit: int = Query(20, ge=1, le=200), user: AuthUser = Depends(staff)):
+        rows = await accounts.recent_sessions(user.institution_id, limit, None if user.role == "ADMIN" else user.id)
+        return [_rec(r) for r in rows]
+
+    @app.get("/sessions/{session_id}/attendance")
+    async def attendance(session_id: uuid.UUID, user: AuthUser = Depends(staff)):
+        s = await own_session(user, session_id)
+        rows = await accounts.attendance(user.institution_id, session_id)
+        return {"session": {"id": str(s["id"]), "room_code": s["room_code"], "lecturer_name": s["lecturer_name"], "status": s["status"],
+                            "started_at": s["started_at"], "length_seconds": s["length_seconds"]},
+                "attendees": [{**_rec(r), "percent": _percent(r["connected_seconds"], s["length_seconds"])} for r in rows]}
+
+    @app.get("/sessions/{session_id}/attendance.csv")
+    async def attendance_csv(session_id: uuid.UUID, user: AuthUser = Depends(staff)):
+        s = await own_session(user, session_id)
+        rows = await accounts.attendance(user.institution_id, session_id)
+        out = io.StringIO()
+        w = csv.writer(out, lineterminator="\r\n")
+        w.writerow(["Name", "Email", "First joined", "Last left", "Minutes connected", "Percent of lecture", "Times connected"])
+        for r in rows:
+            w.writerow([_csv_cell(r["full_name"]), _csv_cell(r["email"]), r["first_joined_at"].isoformat(timespec="seconds"),
+                        r["last_left_at"].isoformat(timespec="seconds") if r["last_left_at"] else "",
+                        round(r["connected_seconds"] / 60, 1), _percent(r["connected_seconds"], s["length_seconds"]), r["connections"]])
+        name = re.sub(r"[^A-Za-z0-9._-]", "_", f"attendance-{s['room_code']}-{s['started_at'].date()}") + ".csv"
+        # the BOM makes Excel read the UTF-8 names correctly
+        return Response(content="\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
     @app.get("/join/{code}")
     async def join_info(code: str, user: AuthUser = Depends(student_only)):
         target = await db.get_join_target(code)

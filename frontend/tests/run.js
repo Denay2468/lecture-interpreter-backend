@@ -225,7 +225,7 @@ test("clear() stops the current clip and drops the rest", async () => {
 console.log("API client (api.js)");
 const api = require("../js/api.js");
 function memStorage() { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; }
-const resp = (status, json) => ({ ok: status < 400, status, json: async () => json });
+const resp = (status, json) => ({ ok: status < 400, status, json: async () => json, text: async () => (typeof json === "string" ? json : JSON.stringify(json)) });
 const tokensFor = (n) => ({ access_token: "acc" + n, refresh_token: "ref" + n, expires_in: 900, user: { id: "u", role: "LECTURER", full_name: "T" } });
 const sessionRec = (acc, ms) => ({ access_token: acc, refresh_token: "r-" + acc, expires_at: Date.now() + ms, user: { id: "u", role: "LECTURER", full_name: "T" } });
 function setup(rec, handler) {
@@ -290,6 +290,14 @@ serial("requireRole redirects to the login page for a missing or wrong role", as
   assert.ok(api.requireRole("LECTURER", "ADMIN"));
   assert.deepStrictEqual(nav, ["login.html", "login.html"]);
   delete global.BLB_NAVIGATE;
+});
+serial("download returns a file's text with the access token, and refreshes like any other call", async () => {
+  const calls = setup(sessionRec("old", 600000), (c) => {
+    if (c.path === "/auth/refresh") return resp(200, tokensFor(5));
+    return c.auth === "Bearer old" ? resp(401, { detail: "expired" }) : resp(200, "Name,Email\r\n");
+  });
+  assert.strictEqual(await api.download("/sessions/s1/attendance.csv"), "Name,Email\r\n");
+  assert.deepStrictEqual(calls.map((c) => c.path), ["/sessions/s1/attendance.csv", "/auth/refresh", "/sessions/s1/attendance.csv"]);
 });
 serial("signOut clears the session even if the server can't be reached", async () => {
   setup(sessionRec("a", 600000), () => { throw new Error("offline"); });

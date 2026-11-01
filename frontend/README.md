@@ -5,8 +5,8 @@ Static pages (no build step, no dependencies) for the whole product: sign-in, sc
 | Page | Who | What it does |
 |---|---|---|
 | `login.html` | everyone | sign in; student sign-up with a university email; enter the emailed code and choose a password (lecturer invitations too); forgot password |
-| `admin.html` | school admin | monthly usage, invite/deactivate lecturers, rooms and join codes, recent lectures, email domains (read-only) |
-| `teacher.html` | lecturer, admin | pick or create a room (and see its join code), start a lecture, stream the microphone, hear student questions |
+| `admin.html` | school admin | monthly usage, invite/deactivate lecturers, rooms and join codes, recent lectures with who attended (and a CSV), email domains (read-only) |
+| `teacher.html` | lecturer, admin | pick or create a room (and see its join code), start a lecture, stream the microphone, hear student questions; see your recent lectures and who attended |
 | `student.html` | student | join with a room code, live captions and translated audio, push-to-talk questions |
 
 ## Run it

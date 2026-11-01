@@ -1,2 +1,15 @@
+# Environment / Secret keys
 .env
 *.env
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Audio / Temp outputs
+received_audio/
+debug_output/
+*.wav
+*.mp3

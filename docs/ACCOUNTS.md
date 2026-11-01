@@ -42,6 +42,7 @@ With `EMAIL_BACKEND=console` the codes are printed in the server log instead of 
 | `GET/POST /admin/lecturers`, `PATCH /admin/lecturers/{id}`, `POST .../resend-invite` | admin | |
 | `GET /admin/usage`, `/admin/sessions`, `/admin/email-domains` | admin | |
 | `GET/POST /rooms`, `PATCH /rooms/{id}`, `POST /rooms/{id}/rotate-code` | lecturer, admin | a lecturer changes only rooms they own; the admin any in the school |
+| `GET /sessions`, `GET /sessions/{id}/attendance`, `.../attendance.csv` | lecturer (own lectures), admin (all) | who attended; see Attendance below |
 | `GET /join/{code}` | student | checks a code is at the student's school |
 
 ## WebSocket (default port 8765)
@@ -52,6 +53,17 @@ With `EMAIL_BACKEND=console` the codes are printed in the server log instead of 
 ```
 
 Close codes: 4401 not signed in or session no longer valid, 4403 wrong role / wrong school / subscription or monthly limit, 4404 unknown room or code, 4409 room busy or a student already connected, 4412 no lecture live yet, 4413 lecture ended. Who you are is settled before anything about the room is revealed.
+
+## Attendance
+
+Every student who connects to a live lecture is recorded once per lecture (`session_participants`): when they first joined, when they last left, how many times they connected, and the total time connected. A student whose connection drops and comes back is the same row, not a second attendee. Whoever is still connected when the lecture ends (or when a crash is settled) is closed at that moment.
+
+- **The database enforces who can appear:** only a STUDENT, and only one at the same school as the lecture.
+- **Recording never touches the lecture.** If the database hiccups, it is logged and skipped.
+- **Who can see it:** the lecturer who taught the lecture and the school admin. Another lecturer gets 403, another school 404, a student 403.
+- **Where:** `GET /sessions` (a lecturer's own lectures, or all of an admin's) with attendee counts; `GET /sessions/{id}/attendance` for the sheet; `.csv` to download it. The CSV opens correctly in Excel, and a name that looks like a spreadsheet formula is defused.
+- **What it means:** time connected is how long the student's connection was open. It is a sign-in sheet, not proof of attention, and an account shared with a friend would count too.
+- **It is personal data.** Students are told at sign-up that their lecturer and admin can see which lectures they attended. There is no retention or deletion tool yet: decide how long to keep it, and check Indonesia's data protection law (UU PDP) with whoever advises your institutions.
 
 ## Operator runbook
 
@@ -71,4 +83,4 @@ Check that a school really controls a domain before registering it: a domain you
 - Rate limits are in memory: they reset on restart and aren't shared between server processes.
 - The frontend keeps the session in `sessionStorage` (this tab only) and the access token appears in WebSocket URLs, so use `wss://`/`https://` outside local testing and restrict `CORS_ORIGINS`. Refresh tokens in JavaScript-readable storage are exposed to any XSS; the pages insert all server text with `textContent`, but httpOnly cookies would be stronger.
 - Two tabs refreshing the same token at the same moment can sign the user out (reuse detection can't tell it from theft). The pages share one in-flight refresh per tab.
-- One student connection per room.
+- One student connection per room, so attendance can't yet cover a whole class at once. Supporting many students in one room is the next big piece.

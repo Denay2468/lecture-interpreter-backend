@@ -288,6 +288,58 @@ async def test_abort_with_clock_anomaly(s: Seed) -> None:
     check(await db.complete_session(future, "test") == 0, "complete_session has the same guard (0 seconds, no constraint error)")
 
 
+async def test_attendance(s: Seed) -> None:
+    print("\ntest_attendance_is_recorded_once_per_student")
+    db, pool = s.db, s.pool
+    inst = await s.institution()
+    lec = await s.user(inst)
+    r1, r2 = (await s.room(inst))[0], (await s.room(inst))[0]
+    stu1, stu2 = await s.user(inst, role="STUDENT"), await s.user(inst, role="STUDENT")
+    live = await db.start_session(r1, lec, "id", "en")
+
+    async def row(sid, uid):
+        return await pool.fetchrow("SELECT * FROM session_participants WHERE session_id = $1 AND user_id = $2", sid, uid)
+
+    check(await db.record_join(live.id, stu1) is True, "a student joining a live lecture is recorded")
+    await pool.execute("UPDATE session_participants SET connected_since = now() - interval '90 seconds' WHERE user_id = $1", stu1)
+    await db.record_leave(live.id, stu1)
+    p = await row(live.id, stu1)
+    check(90 <= p["connected_seconds"] <= 92 and p["connected_since"] is None and p["last_left_at"] is not None and p["connections"] == 1,
+          f"leaving adds the time they were connected ({p['connected_seconds']}s)")
+    check(await db.record_join(live.id, stu1) is True, "the same student coming back is recorded again")
+    await pool.execute("UPDATE session_participants SET connected_since = now() - interval '30 seconds' WHERE user_id = $1", stu1)
+    await db.record_leave(live.id, stu1)
+    p = await row(live.id, stu1)
+    n = await pool.fetchval("SELECT count(*) FROM session_participants WHERE session_id = $1", live.id)
+    check(n == 1 and p["connections"] == 2 and 120 <= p["connected_seconds"] <= 122, f"...as the same row: 2 connections, time added up ({p['connected_seconds']}s)")
+    await db.record_leave(live.id, stu1)
+    check((await row(live.id, stu1))["connected_seconds"] == p["connected_seconds"], "leaving twice changes nothing")
+
+    await db.record_join(live.id, stu2)
+    await pool.execute("UPDATE session_participants SET connected_since = now() - interval '60 seconds' WHERE user_id = $1", stu2)
+    await db.complete_session(live.id, "test")
+    ended_at = await pool.fetchval("SELECT ended_at FROM lecture_sessions WHERE id = $1", live.id)
+    q = await row(live.id, stu2)
+    check(q["connected_since"] is None and q["last_left_at"] == ended_at and 60 <= q["connected_seconds"] <= 62,
+          "ending the lecture closes whoever is still connected, at the moment it ended")
+    check(await db.record_join(live.id, stu1) is False and (await row(live.id, stu1))["connections"] == 2, "nobody can join a lecture that has ended, and its record is untouched")
+
+    live2 = await db.start_session(r2, lec, "id", "en")
+    other = await s.institution()
+    check(await raises(FK, db.record_join(live2.id, await s.user(other, role="STUDENT"))), "a student from another school can't be recorded")
+    check(await raises(Check, db.record_join(live2.id, lec)), "a lecturer can't be recorded as attending")
+    check(await pool.fetchval("SELECT count(*) FROM session_participants WHERE session_id = $1", live2.id) == 0, "and neither attempt left a row behind")
+
+    await db.record_join(live2.id, stu1)
+    await pool.execute("UPDATE session_participants SET first_joined_at = now() - interval '15 minutes', connected_since = now() - interval '15 minutes' WHERE session_id = $1", live2.id)
+    await pool.execute("UPDATE lecture_sessions SET started_at = now() - interval '20 minutes', last_heartbeat_at = now() - interval '10 minutes' WHERE id = $1", live2.id)
+    await db.abort_stale_sessions(60)
+    ended = await pool.fetchval("SELECT ended_at FROM lecture_sessions WHERE id = $1", live2.id)
+    q = await row(live2.id, stu1)
+    check(q["connected_since"] is None and q["last_left_at"] == ended and 298 <= q["connected_seconds"] <= 302,
+          f"after a crash, whoever was connected is closed at the last heartbeat ({q['connected_seconds']}s)")
+
+
 async def main() -> int:
     if not DSN:
         print("SKIPPED: set TEST_DATABASE_URL to run the database tests against a real PostgreSQL.")
@@ -308,6 +360,7 @@ async def main() -> int:
         await test_abort_with_clock_anomaly(s)
         await test_join(s)
         await test_concurrency(s)
+        await test_attendance(s)
         await test_lifecycle(s)
     finally:
         await db.close()

@@ -37,7 +37,7 @@
     constructor(status, message) { super(message); this.status = status; }
   }
 
-  async function raw(method, path, body, token) {
+  async function raw(method, path, body, token, asText) {
     const headers = { "Content-Type": "application/json" };
     if (token) headers.Authorization = "Bearer " + token;
     let res;
@@ -46,6 +46,7 @@
     } catch (e) {
       throw new ApiError(0, "Couldn't reach the server. Is it running, and is the address right?");
     }
+    if (asText && res.ok) return res.text();
     let data = null;
     try { data = await res.json(); } catch (e) { /* 204 or empty body */ }
     if (!res.ok) throw new ApiError(res.status, (data && data.detail) || "Request failed (" + res.status + ").");
@@ -64,16 +65,16 @@
     return refreshing;
   }
 
-  async function authed(method, path, body) {
+  async function authed(method, path, body, asText) {
     let s = Session.get();
     if (!s) throw new ApiError(401, "Sign in required.");
     if (Date.now() > s.expires_at - 15000) s = await refreshTokens();
     try {
-      return await raw(method, path, body, s.access_token);
+      return await raw(method, path, body, s.access_token, asText);
     } catch (e) {
       if (e.status !== 401) throw e;
       s = await refreshTokens();
-      return raw(method, path, body, s.access_token);
+      return raw(method, path, body, s.access_token, asText);
     }
   }
 
@@ -108,6 +109,7 @@
     get: (path) => authed("GET", path),
     post: (path, body) => authed("POST", path, body === undefined ? {} : body),
     patch: (path, body) => authed("PATCH", path, body),
+    download: (path) => authed("GET", path, undefined, true), // a file (text), e.g. the attendance CSV
   };
   BLB.api = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

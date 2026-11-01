@@ -232,16 +232,18 @@ class Server:
     # ---------------------------------------------------------------- student
 
     async def _handle_student(self, websocket: WebSocketServerProtocol, params: dict) -> None:
+        user = None
         if self._db is None:
             active = self._active[LEGACY_KEY]
         else:
-            active = await self._resolve_student_session(websocket, params)
-            if active is None:
+            resolved = await self._resolve_student_session(websocket, params)
+            if resolved is None:
                 return
+            active, user = resolved
         if active.coordinator.has_student:
             await self._reject(websocket, CLOSE_CONFLICT, "A student is already connected (one per room for now)")
             return
-        await self._serve_student(websocket, active)
+        await self._serve_student(websocket, active, user)
 
     async def _resolve_student_session(self, websocket: WebSocketServerProtocol, params: dict) -> Optional[ActiveSession]:
         # Who you are is settled before anything about the room is revealed.
@@ -277,9 +279,9 @@ class Server:
             # LIVE in the database but not held by this process (e.g. another instance).
             await self._reject(websocket, CLOSE_NOT_LIVE, "This lecture is not available on this server")
             return None
-        return active
+        return active, user
 
-    async def _serve_student(self, websocket: WebSocketServerProtocol, active: ActiveSession) -> None:
+    async def _serve_student(self, websocket: WebSocketServerProtocol, active: ActiveSession, user=None) -> None:
         coord = active.coordinator
         logger.info("Student connected")
         active.student_ws = websocket
@@ -293,6 +295,8 @@ class Server:
         # Registered immediately so presses and question audio are handled in real time.
         coord.register_student_sender(send_control)
         await send_control({"type": "mode_changed", "mode": coord.current_mode})
+        if user is not None and self._lifecycle is not None:  # attendance: only students who passed every check get here
+            await self._lifecycle.student_joined(uuid.UUID(active.session_id), user.id)
 
         async def wait_for_question_mode() -> None:
             while not coord.is_question_mode:
@@ -370,6 +374,8 @@ class Server:
             coord.unregister_student_sender()
             await coord.handle_student_disconnect()
             active.student_ws = None
+            if user is not None and self._lifecycle is not None:
+                await self._lifecycle.student_left(uuid.UUID(active.session_id), user.id)
             logger.info("Student disconnected")
 
     # ---------------------------------------------------------------- plumbing

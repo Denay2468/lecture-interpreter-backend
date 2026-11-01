@@ -344,8 +344,30 @@ class Accounts:
 
     # ---- admin dashboard ---------------------------------------------------------------------------
 
-    async def recent_sessions(self, institution_id: uuid.UUID, limit: int) -> list[asyncpg.Record]:
+    async def recent_sessions(self, institution_id: uuid.UUID, limit: int, lecturer_id: Optional[uuid.UUID] = None) -> list[asyncpg.Record]:
+        """Newest first. With lecturer_id, only that lecturer's lectures."""
         return await self._pool.fetch(
-            "SELECT s.id, s.status, s.started_at, s.ended_at, s.duration_seconds, s.end_reason, r.room_code, u.full_name AS lecturer_name "
+            "SELECT s.id, s.status, s.started_at, s.ended_at, s.duration_seconds, s.end_reason, s.lecturer_id, r.room_code, "
+            "       u.full_name AS lecturer_name, "
+            "       (SELECT count(*) FROM session_participants sp WHERE sp.session_id = s.id)::int AS attendee_count "
             "FROM lecture_sessions s JOIN rooms r ON r.id = s.room_id JOIN users u ON u.id = s.lecturer_id "
-            "WHERE s.institution_id = $1 ORDER BY s.started_at DESC LIMIT $2", institution_id, limit)
+            "WHERE s.institution_id = $1 AND ($3::uuid IS NULL OR s.lecturer_id = $3) "
+            "ORDER BY s.started_at DESC LIMIT $2", institution_id, limit, lecturer_id)
+
+    async def get_session(self, institution_id: uuid.UUID, session_id: uuid.UUID) -> Optional[asyncpg.Record]:
+        return await self._pool.fetchrow(
+            "SELECT s.id, s.status, s.started_at, s.ended_at, s.duration_seconds, s.lecturer_id, r.room_code, "
+            "       u.full_name AS lecturer_name, "
+            "       COALESCE(s.duration_seconds, FLOOR(EXTRACT(EPOCH FROM (now() - s.started_at)))::int) AS length_seconds "
+            "FROM lecture_sessions s JOIN rooms r ON r.id = s.room_id JOIN users u ON u.id = s.lecturer_id "
+            "WHERE s.id = $1 AND s.institution_id = $2", session_id, institution_id)
+
+    async def attendance(self, institution_id: uuid.UUID, session_id: uuid.UUID) -> list[asyncpg.Record]:
+        """Everyone who joined this lecture. A student still connected counts the time so far."""
+        return await self._pool.fetch(
+            "SELECT u.id AS user_id, u.full_name, u.email, p.first_joined_at, p.last_left_at, p.connections, "
+            "       (p.connected_seconds + CASE WHEN p.connected_since IS NOT NULL "
+            "            THEN FLOOR(EXTRACT(EPOCH FROM (now() - p.connected_since)))::int ELSE 0 END) AS connected_seconds, "
+            "       p.connected_since IS NOT NULL AS connected_now "
+            "FROM session_participants p JOIN users u ON u.id = p.user_id "
+            "WHERE p.session_id = $1 AND p.institution_id = $2 ORDER BY lower(u.full_name), u.email", session_id, institution_id)

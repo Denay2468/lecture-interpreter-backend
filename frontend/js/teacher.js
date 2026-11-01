@@ -9,6 +9,7 @@
     setupCard: $("setup-card"), liveCard: $("live-card"), timer: $("timer"), modeBanner: $("mode-banner"),
     level: $("level"), end: $("end"), questions: $("questions"), questionsEmpty: $("questions-empty"), note: $("note"),
     liveJoinLine: $("live-join-line"), liveJoinCode: $("live-join-code"), whoami: $("whoami"), signout: $("signout"),
+    historyCard: $("history-card"), history: $("history"), historyEmpty: $("history-empty"), attendancePanel: $("attendance-panel"),
   };
   el.serverUrl.value = BLB.defaultServerUrl();
 
@@ -74,10 +75,20 @@
     } catch (e) { setStatus(e.message, "error"); }
   });
 
+  // ---- recent lectures and who attended ----
+  async function loadHistory() {
+    try {
+      const rows = await BLB.api.get("/sessions?limit=10");
+      BLB.attendance.renderSessions(el.history.querySelector("tbody"), el.attendancePanel, rows, { showLecturer: false });
+      el.historyEmpty.hidden = rows.length > 0;
+    } catch (e) { if (e.status === 401) BLB.api.goto("login.html"); }
+  }
+
   // ---- sign-in gate (teacher.html?legacy=1 skips it, for a server running without a database) ----
   if (new URLSearchParams(location.search).get("legacy") === "1") {
     el.legacy.checked = true;
     el.roomBlock.hidden = true;
+    el.historyCard.hidden = true;
   } else {
     const session = BLB.api.requireRole("ADMIN", "LECTURER");
     if (!session) return;
@@ -85,6 +96,7 @@
     el.signout.hidden = false;
     el.signout.addEventListener("click", async () => { await BLB.api.signOut(); BLB.api.goto("login.html"); });
     loadRooms();
+    loadHistory();
   }
   el.legacy.addEventListener("change", () => { el.roomBlock.hidden = el.legacy.checked; });
 
@@ -100,7 +112,7 @@
     el.start.disabled = false;
     el.end.disabled = false;
     setStatus(message, kind);
-    if (!el.legacy.checked) loadRooms(el.roomSelect.value); // refresh the "live now" markers
+    if (!el.legacy.checked) { loadRooms(el.roomSelect.value); loadHistory(); } // refresh the "live now" markers and the new lecture
   }
 
   function onFrame(samples) {

@@ -280,26 +280,60 @@ class Database:
         return result.endswith(" 1")
 
     async def complete_session(self, session_id: uuid.UUID, reason: str) -> Optional[int]:
-        """Ends a LIVE session and records its billable seconds. Atomic and
-        idempotent: only the first call for a session finds it LIVE and gets a
-        number back; any later call returns None and changes nothing."""
+        """Ends a LIVE session and records its billable seconds. Atomic and idempotent: only the first call for
+        a session finds it LIVE and gets a number back; any later call returns None and changes nothing.
+        Students still connected at that moment are marked as having left when the lecture ended."""
         return await self._pool.fetchval(
-            "UPDATE lecture_sessions SET status = 'COMPLETED', ended_at = GREATEST(now(), started_at), end_reason = $2, "
-            "       duration_seconds = FLOOR(EXTRACT(EPOCH FROM GREATEST(now() - started_at, interval '0')))::int "
-            "WHERE id = $1 AND status = 'LIVE' RETURNING duration_seconds", session_id, reason)
+            "WITH done AS ("
+            "  UPDATE lecture_sessions SET status = 'COMPLETED', ended_at = GREATEST(now(), started_at), end_reason = $2, "
+            "         duration_seconds = FLOOR(EXTRACT(EPOCH FROM GREATEST(now() - started_at, interval '0')))::int "
+            "  WHERE id = $1 AND status = 'LIVE' RETURNING id, ended_at, duration_seconds), "
+            "closed AS ("
+            "  UPDATE session_participants p SET "
+            "         connected_seconds = p.connected_seconds + GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (d.ended_at - p.connected_since)))::int), "
+            "         last_left_at = d.ended_at, connected_since = NULL "
+            "  FROM done d WHERE p.session_id = d.id AND p.connected_since IS NOT NULL) "
+            "SELECT duration_seconds FROM done", session_id, reason)
 
     async def abort_stale_sessions(self, stale_after_s: float, reason: str = "heartbeat_timeout") -> list[tuple[uuid.UUID, int]]:
-        """Marks LIVE sessions whose heartbeat stopped as ABORTED. Their
-        duration runs to the last heartbeat, the last moment we know they were
-        alive, so a crash neither loses the usage nor bills the downtime.
+        """Marks LIVE sessions whose heartbeat stopped as ABORTED. Their duration runs to the last heartbeat, the
+        last moment we know they were alive, so a crash neither loses the usage nor bills the downtime.
 
-        ended_at is clamped to never precede started_at (a clock that stepped
-        back, a failover). The whole batch is one UPDATE, so without the clamp a
-        single inconsistent row would fail the CHECK constraint on every reaper
-        cycle and block every other stale session from being settled."""
+        ended_at is clamped to never precede started_at (a clock that stepped back, a failover). The whole batch is
+        one UPDATE, so without the clamp a single inconsistent row would fail the CHECK constraint on every reaper
+        cycle and block every other stale session from being settled. Open attendance is closed at the same moment."""
         rows = await self._pool.fetch(
-            "UPDATE lecture_sessions SET status = 'ABORTED', ended_at = GREATEST(last_heartbeat_at, started_at), end_reason = $2, "
-            "       duration_seconds = FLOOR(EXTRACT(EPOCH FROM GREATEST(last_heartbeat_at - started_at, interval '0')))::int "
-            "WHERE status = 'LIVE' AND last_heartbeat_at < now() - make_interval(secs => $1) "
-            "RETURNING id, duration_seconds", float(stale_after_s), reason)
+            "WITH aborted AS ("
+            "  UPDATE lecture_sessions SET status = 'ABORTED', ended_at = GREATEST(last_heartbeat_at, started_at), end_reason = $2, "
+            "         duration_seconds = FLOOR(EXTRACT(EPOCH FROM GREATEST(last_heartbeat_at - started_at, interval '0')))::int "
+            "  WHERE status = 'LIVE' AND last_heartbeat_at < now() - make_interval(secs => $1) "
+            "  RETURNING id, ended_at, duration_seconds), "
+            "closed AS ("
+            "  UPDATE session_participants p SET "
+            "         connected_seconds = p.connected_seconds + GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (a.ended_at - p.connected_since)))::int), "
+            "         last_left_at = a.ended_at, connected_since = NULL "
+            "  FROM aborted a WHERE p.session_id = a.id AND p.connected_since IS NOT NULL) "
+            "SELECT id, duration_seconds FROM aborted", float(stale_after_s), reason)
         return [(r["id"], r["duration_seconds"]) for r in rows]
+
+    # ---- attendance --------------------------------------------------
+
+    async def record_join(self, session_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """A student connected to a LIVE lecture. One row per student per lecture; coming back after a dropped
+        connection counts as another connection, not another row. False when the lecture isn't live."""
+        row = await self._pool.fetchval(
+            "INSERT INTO session_participants (session_id, institution_id, user_id, connected_since) "
+            "SELECT s.id, s.institution_id, $2, now() FROM lecture_sessions s WHERE s.id = $1 AND s.status = 'LIVE' "
+            "ON CONFLICT (session_id, user_id) DO UPDATE SET connected_since = now(), "
+            "    connections = session_participants.connections + 1 "
+            "RETURNING 1", session_id, user_id)
+        return row is not None
+
+    async def record_leave(self, session_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Idempotent: only an open connection is closed, so calling it twice, or after the lecture already
+        closed everyone, changes nothing."""
+        await self._pool.execute(
+            "UPDATE session_participants SET "
+            "  connected_seconds = connected_seconds + GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (now() - connected_since)))::int), "
+            "  last_left_at = now(), connected_since = NULL "
+            "WHERE session_id = $1 AND user_id = $2 AND connected_since IS NOT NULL", session_id, user_id)

@@ -1,4 +1,4 @@
-"""Segmentation — architecture spec Section 1/2/""
+"""Segmentation — architecture spec Section 1/2/
 Segmentation module with hybrid trigger and Clause-Level Streaming ("Tektokan" mode).
 """
 from __future__ import annotations

@@ -220,3 +220,20 @@ The `Hugo-commit` classroom implementation supports multiple students per room,
 five lecturer languages, moderated questions, an editable course glossary,
 Indonesian slang normalization, and progressive PCM playback.
 See [setup, limitations and acceptance tests](docs/classroom-streaming.md).
+
+### Short-phrase streaming
+
+With `INCREMENTAL_PHRASES_ENABLED=true`, repeated interim hypotheses with a
+stable prefix of `PHRASE_TARGET_WORDS=4` words trigger Deepgram Finalize without
+closing the connection. Only provider-final text is translated and spoken;
+interim drafts are never appended to captions/audio. Final text reaching the target size is emitted
+even when speech_final is false; shorter tails wait for an endpoint. Common trailing connectors and
+negations defer the request. Requests are throttled (700 ms minimum, 2 seconds
+when awaiting a final); failed requests fall back to normal endpointing.
+
+This targets earlier playback while speech continues, not a guaranteed 2–5-word
+lag. Provider cadence, buffered audio, translation context and audio backlog can
+increase lag. Very short phrases can reduce translation quality. Test continuous
+speech and negations, and compare `stable_phrase` logs against `speech_final`.
+Set `INCREMENTAL_PHRASES_ENABLED=false` to restore endpoint-based behavior.
+Playback ACK timing still excludes speech recognition / phrase accumulation.

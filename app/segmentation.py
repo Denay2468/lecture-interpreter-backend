@@ -86,6 +86,10 @@ class Segmenter:
         self._listen_task: Optional[asyncio.Task] = None
 
         self.closed = False
+        self._previous_draft: list[str] = []
+        self._last_finalize_ms = float("-inf")
+        self._finalize_pending = False
+
 
     # ---------------------------------------------------------------
     # Deepgram-specific transport. Kept separate from the boundary
@@ -183,6 +187,11 @@ class Segmenter:
             speech_final = bool(getattr(message, "speech_final", False))
             transcript = _extract_transcript(message)
             if is_final:
+                self._previous_draft = []
+                self._finalize_pending = False
+            else:
+                await self._maybe_finalize_phrase(transcript)
+            if is_final:
                 # Diagnostic: in both real runs so far, segments closed via
                 # the UtteranceEnd fallback rather than speech_final. Logging
                 # every finalized chunk with its flag shows whether
@@ -204,6 +213,49 @@ class Segmenter:
         elif msg_type == "Error":
             logger.error("Deepgram error in session %s: %s", self._session_id, message)
 
+    async def _maybe_finalize_phrase(self, transcript: str) -> None:
+        """Use drafts only to request a provider final, never to speak them.
+
+        A stable prefix across two updates reduces premature cuts. A request
+        flushes all buffered audio, so target words is a hint, not a hard cap.
+        Finalize can return no acknowledgement; allow a retry after 2 seconds.
+        """
+        if self.closed or not self._cfg.incremental_phrases_enabled:
+            return
+        words = transcript.casefold().split()
+        common = 0
+        for old, new in zip(self._previous_draft, words):
+            if old.strip(".,!?;:") != new.strip(".,!?;:"):
+                break
+            common += 1
+        self._previous_draft = words
+        now = _now_ms()
+        cooldown = max(self._cfg.phrase_finalize_interval_ms,
+                       2000 if self._finalize_pending else 0)
+        if (common < self._cfg.phrase_target_words or not words
+                or now - self._last_finalize_ms < cooldown
+                or self._dg_connection is None):
+            return
+        # Avoid ending on common connectors/negations. This is a heuristic,
+        # not a claim that arbitrary short phrases are semantically complete.
+        if words[-1].strip(".,!?;:") in {
+            "tidak", "bukan", "belum", "jangan", "sangat", "terlalu", "dan",
+            "atau", "yang", "di", "ke", "dari", "not", "very", "the", "a",
+            "and", "or", "to", "of", "no", "muy", "de", "el", "la",
+        }:
+            return
+        self._last_finalize_ms = now
+        self._finalize_pending = True
+        try:
+            await asyncio.wait_for(self._dg_connection.send_finalize(), timeout=1.0)
+            logger.info("Session %s phrase finalize requested (draft_words=%d)",
+                        self._session_id, len(words))
+        except Exception:
+            # Keep normal endpointing alive; never log credentials from SDK errors.
+            self._finalize_pending = False
+            logger.warning("Session %s phrase finalize failed; using normal endpointing",
+                           self._session_id)
+
     # ---------------------------------------------------------------
     # Boundary-triggering logic — transport-agnostic, unit-testable
     # without a real Deepgram connection (see
@@ -224,8 +276,7 @@ class Segmenter:
             await self._close_segment(trigger="speech_final")
         elif (event == "results" and is_final and transcript
               and self._cfg.incremental_phrases_enabled
-              and (len(" ".join(self._current_transcript_parts).split()) >= 6
-                   or len("".join(self._current_transcript_parts)) >= 32)):
+              and len(" ".join(self._current_transcript_parts).split()) >= self._cfg.phrase_target_words):
             # Commit only finalized STT text, never mutable interim hypotheses.
             await self._close_segment(trigger="stable_phrase")
         elif event == "utterance_end" and self._current_audio:

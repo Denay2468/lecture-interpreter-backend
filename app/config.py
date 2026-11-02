@@ -18,6 +18,8 @@ class Config:
     cost_currency: str = "USD"
     streaming_audio_enabled: bool = True
     incremental_phrases_enabled: bool = True
+    phrase_target_words: int = 4
+    phrase_finalize_interval_ms: int = 700
     slang_normalization_enabled: bool = True
     # Realtime Transport
     host: str = "0.0.0.0"
@@ -180,6 +182,12 @@ def load_config(env_path: str | None = None) -> Config:
             if not math.isfinite(rate) or rate < 0:
                 raise ValueError(name.upper() + " must be a finite non-negative rate")
             setattr(cfg, name, rate)
+    cfg.phrase_target_words = _get("PHRASE_TARGET_WORDS", cfg.phrase_target_words)
+    cfg.phrase_finalize_interval_ms = _get("PHRASE_FINALIZE_INTERVAL_MS", cfg.phrase_finalize_interval_ms)
+    if not 2 <= cfg.phrase_target_words <= 12:
+        raise ValueError("PHRASE_TARGET_WORDS must be between 2 and 12")
+    if not 300 <= cfg.phrase_finalize_interval_ms <= 5000:
+        raise ValueError("PHRASE_FINALIZE_INTERVAL_MS must be between 300 and 5000")
     cfg.cost_currency = os.getenv("COST_CURRENCY", "USD")
     cfg.host = os.getenv("HOST", cfg.host)
     cfg.port = _get("PORT", cfg.port)

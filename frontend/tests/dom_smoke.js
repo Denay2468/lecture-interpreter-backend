@@ -47,6 +47,11 @@ async function load(page, opts) {
     runScripts: "dangerously", resources: "usable", pretendToBeVisual: true,
     beforeParse(w) {
       w.WebSocket = FakeWS; w.Audio = FakeAudio;
+      w.AudioContext = class {
+        constructor() { this.state="suspended"; this.currentTime=0; }
+        async resume() { this.state="running"; }
+        async suspend() { this.state="suspended"; }
+      };
       w.URL.createObjectURL = () => "blob:fake"; w.URL.revokeObjectURL = () => {};
       w.HTMLElement.prototype.scrollIntoView = function () {};
       const ss = memStorage(), ls = memStorage();
@@ -206,7 +211,14 @@ async function studentPage() {
   $("sound").checked = true;
 
   $("enable-mic").click(); await sleep(10);
-  check(!$("ask").disabled && $("enable-mic").hidden, "enabling the microphone enables the Ask button");
+  check($("ask").disabled && $("enable-mic").hidden, "microphone alone does not bypass lecturer approval");
+  ws.receive(JSON.stringify({type:"welcome",student_id:"student-a"}));
+  $("request-question").click();
+  check(strings(ws).includes('{"type":"request_question"}'), "Raise hand requests a turn");
+  ws.receive(JSON.stringify({type:"classroom",students:2,waiting:["student-a"],speaker:null}));
+  check($("request-question").disabled && text($("request-question")).includes("1"), "waiting position is shown");
+  ws.receive(JSON.stringify({type:"question_granted"}));
+  check(!$("ask").disabled, "lecturer grant enables push to talk");
   for (let i = 0; i < 5; i++) FakeMic.last.o.onFrame(new w.Int16Array(320));
   check(binaries(ws).length === 0, "nothing is sent while the button isn't held");
   $("ask").dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true }));
@@ -289,18 +301,22 @@ async function teacherPage() {
   $("room-select").value = "CS-302"; $("room-select").dispatchEvent(new w.Event("change"));
   $("start").click(); await sleep(60);
   const ws = p.last();
-  check(ws.url === "ws://localhost:8765/ws/teacher?room=CS-302&token=lec-tok", "starting connects with the chosen room and the lecturer's token (" + ws.url.replace(/token=.*/, "token=***") + ")");
+  check(ws.url === "ws://localhost:8765/ws/teacher?room=CS-302&token=lec-tok&source=id&configure=1", "starting connects with the chosen room and the lecturer's token (" + ws.url.replace(/token=.*/, "token=***") + ")");
   check(FakeMic.last && $("start").disabled, "the microphone starts first and Start is disabled");
   FakeMic.last.o.onFrame(new w.Int16Array(320));
-  check(ws.sent.length === 0, "no audio is sent before the server says the speech engine is ready");
+  check(binaries(ws).length === 0, "no audio is sent before the server says the speech engine is ready");
   ws.receive(JSON.stringify({ type: "mode_changed", mode: "lecture" }));
   check(!$("live-card").hidden && $("setup-card").hidden && text($("live-join-code")) === "K7P2QX", "the first server message starts the live view, with the join code for the projector");
+  check($("join-qr").querySelector("svg") !== null, "join QR code is rendered locally");
+  ws.receive(JSON.stringify({type:"classroom",students:2,waiting:["student-a"],speaker:null}));
+  $("question-queue").querySelector("button").click();
+  check(strings(ws).includes('{"type":"grant_question","student_id":"student-a"}'), "lecturer can approve a queued student");
   FakeMic.last.o.onFrame(new w.Int16Array(320)); FakeMic.last.o.onFrame(new w.Int16Array(320));
-  const seqs = () => ws.sent.map((b) => new w.DataView(b).getUint32(0, false));
+  const seqs = () => binaries(ws).map((b) => new w.DataView(b).getUint32(0, false));
   check(JSON.stringify(seqs()) === "[0,1]", "frames are sent with sequence numbers from 0");
   ws.receive(JSON.stringify({ type: "mode_changed", mode: "question" }));
   FakeMic.last.o.onFrame(new w.Int16Array(320));
-  check(!$("mode-banner").hidden && ws.sent.length === 2, "while a student asks, a banner shows and the microphone is paused");
+  check(!$("mode-banner").hidden && binaries(ws).length === 2, "while a student asks, a banner shows and the microphone is paused");
   ws.receive(JSON.stringify({ type: "mode_changed", mode: "lecture" }));
   FakeMic.last.o.onFrame(new w.Int16Array(320));
   check($("mode-banner").hidden && JSON.stringify(seqs()) === "[0,1,2]", "afterwards streaming resumes with contiguous sequence numbers");

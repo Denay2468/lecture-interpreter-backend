@@ -11,6 +11,14 @@ from dotenv import load_dotenv
 
 @dataclass
 class Config:
+    course_glossary: tuple = ()
+    cost_stt_per_minute: Optional[float] = None
+    cost_mt_per_million: Optional[float] = None
+    cost_tts_per_million: Optional[float] = None
+    cost_currency: str = "USD"
+    streaming_audio_enabled: bool = True
+    incremental_phrases_enabled: bool = True
+    slang_normalization_enabled: bool = True
     # Realtime Transport
     host: str = "0.0.0.0"
     port: int = 8765
@@ -90,6 +98,8 @@ class Config:
     deepl_api_url: str = "https://api-free.deepl.com/v2/translate"
     elevenlabs_api_key: Optional[str] = None
     elevenlabs_voice_id: Optional[str] = None
+    elevenlabs_model_id: str = "eleven_flash_v2_5"
+    tts_transport: str = "http"
 
     # How many segments can be translated/synthesized concurrently.
     # Architecture spec Section 4: processing must never block on mode
@@ -160,6 +170,17 @@ def load_config(env_path: str | None = None) -> Config:
         return type(default)(val) if val not in (None, "") else default
 
     cfg = Config()
+    for name in ("streaming_audio_enabled", "incremental_phrases_enabled", "slang_normalization_enabled"):
+        setattr(cfg, name, os.getenv(name.upper(), "true").lower() in ("true", "1", "yes"))
+    for name in ("cost_stt_per_minute", "cost_mt_per_million", "cost_tts_per_million"):
+        value = os.getenv(name.upper(), "").strip()
+        if value:
+            import math
+            rate = float(value)
+            if not math.isfinite(rate) or rate < 0:
+                raise ValueError(name.upper() + " must be a finite non-negative rate")
+            setattr(cfg, name, rate)
+    cfg.cost_currency = os.getenv("COST_CURRENCY", "USD")
     cfg.host = os.getenv("HOST", cfg.host)
     cfg.port = _get("PORT", cfg.port)
     cfg.sample_rate_hz = _get("SAMPLE_RATE_HZ", cfg.sample_rate_hz)
@@ -180,6 +201,12 @@ def load_config(env_path: str | None = None) -> Config:
     cfg.deepl_api_url = os.getenv("DEEPL_API_URL", cfg.deepl_api_url)
     cfg.elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY", cfg.elevenlabs_api_key)
     cfg.elevenlabs_voice_id = os.getenv("ELEVENLABS_VOICE_ID", cfg.elevenlabs_voice_id)
+    cfg.elevenlabs_model_id = os.getenv("ELEVENLABS_MODEL_ID", cfg.elevenlabs_model_id).strip()
+    cfg.tts_transport = os.getenv("TTS_TRANSPORT", cfg.tts_transport).strip().lower()
+    if cfg.tts_transport not in ("http", "websocket"):
+        raise ValueError("TTS_TRANSPORT must be http or websocket")
+    if not cfg.elevenlabs_model_id:
+        raise ValueError("ELEVENLABS_MODEL_ID must not be empty")
     cfg.translation_num_workers = _get("TRANSLATION_NUM_WORKERS", cfg.translation_num_workers)
     cfg.translation_max_attempts = _get("TRANSLATION_MAX_ATTEMPTS", cfg.translation_max_attempts)
     cfg.translation_drain_timeout_s = _get("TRANSLATION_DRAIN_TIMEOUT_S", cfg.translation_drain_timeout_s)

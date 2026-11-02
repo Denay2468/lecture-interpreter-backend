@@ -79,7 +79,10 @@ async def attempt(uri):
 
 
 async def first_message(ws):
-    return json.loads(await asyncio.wait_for(ws.recv(), 3))
+    while True:
+        data = json.loads(await asyncio.wait_for(ws.recv(), 3))
+        if data.get("type") == "mode_changed":
+            return data
 
 
 async def wait_until(pred, timeout=5.0):
@@ -175,10 +178,10 @@ async def run(db: Database) -> None:
             async with websockets.connect(student(code_a.lower())) as st:
                 check(await first_message(st) == LECTURE, "a student joins with a lowercase code and is told the mode")
                 got, reason, _ = await attempt(student(code_a))
-                check(got == 4409, f"a second student is refused rather than stealing segments (got {got}: {reason!r})")
+                check(got is None, f"a second student can join the same room (got {got}: {reason!r})")
                 await t.close()
                 try:
-                    await asyncio.wait_for(st.recv(), 5)
+                    await asyncio.wait_for(st.wait_closed(), 5)
                 except websockets.ConnectionClosed:
                     pass
                 check(st.close_code == 4413, f"the student is told the lecture ended (got {st.close_code})")
@@ -201,7 +204,7 @@ async def run(db: Database) -> None:
         StubCoordinator.fail_attach = True
         got, reason, _ = await attempt(teacher(label_a))
         StubCoordinator.fail_attach = False
-        check(got == 1011 and "stub attach failure" in reason, f"a speech-pipeline failure is reported to the teacher (got {got}: {reason!r})")
+        check(got == 1011 and "Speech service could not start" in reason, f"a speech-pipeline failure is reported to the teacher (got {got}: {reason!r})")
         await wait_until(done)
         row = await latest(pool, room_a)
         check(row["status"] == "COMPLETED" and row["end_reason"] == "attach_failed", "the failed start is settled, not left LIVE")
@@ -219,16 +222,11 @@ async def run(db: Database) -> None:
             async with websockets.connect(f"{lb}/ws/student") as ls:
                 check(await first_message(ls) == LECTURE, "a student connects without a code")
                 got, _, _ = await attempt(f"{lb}/ws/student")
-                check(got == 4409, "a second student is refused")
+                check(got is None, "a second student can join")
                 await lt.close()
-                try:
-                    await asyncio.wait_for(ls.recv(), 0.8)
-                    still_open = False
-                except asyncio.TimeoutError:
-                    still_open = True
-                except websockets.ConnectionClosed:
-                    still_open = False
-                check(still_open, "in single-session mode the student stays connected after the teacher leaves (unchanged)")
+                await asyncio.wait_for(ls.wait_closed(), 3)
+                check(ls.close_code == 4413, "single-session students are told to rejoin after the lecture ends")
+
 
 
 async def main() -> int:

@@ -86,3 +86,6 @@ td button.small { margin: 2px 6px 2px 0; }
 .inline-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-top: 12px; }
 .inline-form label { margin: 0 0 4px; }
 @media (max-width: 640px) { .inline-form { grid-template-columns: 1fr; } }
+
+textarea { width:100%; box-sizing:border-box; padding:12px; font:inherit; border:1px solid #dce1eb; border-radius:10px; }
+#question-queue button { margin:4px; }

@@ -36,7 +36,7 @@ import asyncio
 import json
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -50,6 +50,8 @@ from .db import (Database, InstitutionInactive, LecturerNotAllowed, LiveSession,
 from .lifecycle import SessionLifecycle
 from .protocol import encode_playback_frame
 from .session import SessionCoordinator
+from .classroom import Classroom
+from .glossary import parse_glossary
 
 logger = logging.getLogger("server")
 
@@ -63,7 +65,7 @@ CLOSE_LECTURE_ENDED = 4413
 CLOSE_SERVER_ERROR = 1011
 
 # The speech pipeline is wired for Indonesian -> English only.
-SUPPORTED_LANGUAGE_PAIRS = {("id", "en")}
+SUPPORTED_LANGUAGE_PAIRS = {(lang, "en") for lang in ("id", "en", "zh", "ja", "es")}
 LEGACY_KEY = "legacy"
 
 
@@ -72,7 +74,8 @@ class ActiveSession:
     key: object                     # room id (multi-tenant) or LEGACY_KEY
     session_id: str
     coordinator: SessionCoordinator
-    student_ws: Optional[WebSocketServerProtocol] = None
+    classroom: Optional[Classroom] = None
+    starting: bool = False
 
 
 class Server:
@@ -97,19 +100,41 @@ class Server:
     # ---------------------------------------------------------------- teacher
 
     async def _handle_teacher(self, websocket: WebSocketServerProtocol, params: dict) -> None:
+        if params.get("configure", [""])[0] == "1":
+            try:
+                message = await asyncio.wait_for(websocket.recv(), 10)
+                settings = json.loads(message)
+                if not isinstance(settings, dict) or settings.get("type") != "configure_lecture":
+                    raise ValueError("Invalid lecture configuration")
+                params = dict(params, glossary=[settings.get("glossary", "")])
+            except (ValueError, TypeError, asyncio.TimeoutError):
+                await self._reject(websocket, CLOSE_BAD_REQUEST, "Invalid lecture configuration")
+                return
+        source = params.get("source", ["id"])[0]
+        if (source, params.get("target", ["en"])[0]) not in SUPPORTED_LANGUAGE_PAIRS:
+            await self._reject(websocket, CLOSE_BAD_REQUEST, "Unsupported language pair")
+            return
+        try:
+            glossary = parse_glossary(params.get("glossary", [""])[0])
+        except ValueError as exc:
+            await self._reject(websocket, CLOSE_BAD_REQUEST, str(exc))
+            return
+        lecture_cfg = replace(self._cfg, segmentation_language=source, course_glossary=glossary)
         if self._db is None:
             active = self._active[LEGACY_KEY]
-            if active.coordinator.teacher_connected:
+            if active.coordinator.teacher_connected or active.starting:
                 await self._reject(websocket, CLOSE_CONFLICT, "A teacher is already connected")
                 return
             session_id = params.get("session_id", [str(uuid.uuid4())])[0]
+            active.starting = True
             active.session_id = session_id
+            active.coordinator._cfg = lecture_cfg
         else:
             live = await self._start_db_session(websocket, params)
             if live is None:
                 return
             session_id = str(live.id)
-            active = ActiveSession(live.room_id, session_id, self._coordinator_factory(self._cfg))
+            active = ActiveSession(live.room_id, session_id, self._coordinator_factory(lecture_cfg))
             self._active[live.room_id] = active
 
         coordinator = active.coordinator
@@ -117,9 +142,9 @@ class Server:
         try:
             await coordinator.attach_teacher(session_id)
         except Exception as e:  # noqa: BLE001 - e.g. no Deepgram key, or the connection failed
-            logger.error("Could not attach teacher session %s: %s", session_id, e)
+            logger.error("Could not attach teacher session %s (%s)", session_id, type(e).__name__)
             await self._finish_teacher(active, "attach_failed")
-            await self._reject(websocket, CLOSE_SERVER_ERROR, str(e))
+            await self._reject(websocket, CLOSE_SERVER_ERROR, "Speech service could not start; check provider credentials and configuration")
             return
 
         async def send_audio(audio: bytes) -> None:
@@ -135,7 +160,12 @@ class Server:
             except websockets.ConnectionClosed:
                 pass
 
+        active.starting = False
         coordinator.register_teacher_sender(send_audio, send_control)
+        if active.classroom is None:
+            active.classroom = Classroom(coordinator)
+        active.classroom.teacher_send = send_control
+        active.classroom.start()
         # Rule 11: a teacher joining mid-question learns the mode immediately.
         await send_control({"type": "mode_changed", "mode": coordinator.current_mode})
 
@@ -144,7 +174,12 @@ class Server:
                 if isinstance(message, bytes):
                     coordinator.handle_teacher_frame(session_id, message)
                 else:
-                    logger.debug("Ignoring non-binary message from teacher %s: %r", session_id, message)
+                    try:
+                        control = json.loads(message)
+                        if isinstance(control, dict) and control.get("type") == "grant_question":
+                            await active.classroom.grant(control.get("student_id"))
+                    except (ValueError, TypeError):
+                        pass
         except websockets.ConnectionClosed:
             pass
         finally:
@@ -197,6 +232,7 @@ class Server:
         return None
 
     async def _finish_teacher(self, active: ActiveSession, reason: str) -> None:
+        active.starting = False
         coordinator = active.coordinator
         playback = coordinator.current_playback
         multi_tenant = active.key != LEGACY_KEY
@@ -209,16 +245,15 @@ class Server:
             await coordinator.detach_teacher(active.session_id)
         except Exception:  # noqa: BLE001
             logger.exception("Error while detaching teacher session %s", active.session_id)
+        if active.classroom:
+            await self._drain_playback(playback)
+            await active.classroom.close()
+            active.classroom = None
         if not multi_tenant:
             return
         # Only remove our own entry: a new lecture may already have started in this room.
         if self._active.get(active.key) is active:
             del self._active[active.key]
-        student = active.student_ws
-        if student is not None:
-            await self._drain_playback(playback)
-            await student.close(code=CLOSE_LECTURE_ENDED, reason="The lecture has ended")
-
     @staticmethod
     async def _drain_playback(playback) -> None:
         """Lets already-translated segments reach the student before the connection closes."""
@@ -238,9 +273,6 @@ class Server:
             active = await self._resolve_student_session(websocket, params)
             if active is None:
                 return
-        if active.coordinator.has_student:
-            await self._reject(websocket, CLOSE_CONFLICT, "A student is already connected (one per room for now)")
-            return
         await self._serve_student(websocket, active)
 
     async def _resolve_student_session(self, websocket: WebSocketServerProtocol, params: dict) -> Optional[ActiveSession]:
@@ -280,97 +312,24 @@ class Server:
         return active
 
     async def _serve_student(self, websocket: WebSocketServerProtocol, active: ActiveSession) -> None:
-        coord = active.coordinator
-        logger.info("Student connected")
-        active.student_ws = websocket
-
-        async def send_control(message: dict) -> None:
-            try:
-                await websocket.send(json.dumps(message))
-            except websockets.ConnectionClosed:
-                pass
-
-        # Registered immediately so presses and question audio are handled in real time.
-        coord.register_student_sender(send_control)
-        await send_control({"type": "mode_changed", "mode": coord.current_mode})
-
-        async def wait_for_question_mode() -> None:
-            while not coord.is_question_mode:
-                await asyncio.sleep(0.05)
-
-        async def send_loop() -> None:
-            controller = coord.current_playback
-            if controller is None:
-                logger.info("Student waiting for the lecture's speech pipeline to finish starting...")
-            while controller is None:
-                await asyncio.sleep(0.2)
-                controller = coord.current_playback
-            logger.info("Student wired to the active teacher session")
-
-            # Rule 5: pause dequeuing (not processing) during Question Mode.
-            while True:
-                await coord.lecture_mode_event.wait()
-                get_task = asyncio.create_task(controller.get_next())
-                question_task = asyncio.create_task(wait_for_question_mode())
-                done, pending = await asyncio.wait({get_task, question_task}, return_when=asyncio.FIRST_COMPLETED)
-                for t in pending:
-                    t.cancel()
-                if get_task in done:
-                    result = get_task.result()
-                    # wait_for_question_mode polls every 50ms, so a segment landing right
-                    # after a press can win the race and arrive here during Question Mode.
-                    # Hold it (already dequeued; this loop is sequential, so order is kept).
-                    await coord.lecture_mode_event.wait()
-                    # Text first, then audio: a UI can show the caption as the audio starts
-                    # (the two are paired by `sequence`, which the audio frame also carries).
-                    await websocket.send(json.dumps({
-                        "type": "segment", "sequence": result.sequence,
-                        "source_transcript": result.source_transcript, "translated_text": result.translated_text}))
-                    await websocket.send(encode_playback_frame(result.sequence, result.audio))
-                    logger.info("Sent segment #%d to student (%d bytes): %r -> %r", result.sequence,
-                                len(result.audio), result.source_transcript, result.translated_text)
-                else:
-                    try:
-                        await get_task
-                    except asyncio.CancelledError:
-                        pass
-
-        async def recv_loop() -> None:
+        if active.classroom is None:
+            active.classroom = Classroom(active.coordinator)
+        hub = active.classroom
+        student = await hub.join(websocket)
+        async def receive():
             async for message in websocket:
-                if isinstance(message, bytes):
-                    coord.handle_question_audio_frame(message)
-                    continue
-                try:
-                    data = json.loads(message)
-                except json.JSONDecodeError:
-                    logger.warning("Malformed control message from student: %r", message)
-                    continue
-                msg_type = data.get("type")
-                if msg_type == "ask_press":
-                    await coord.handle_ask_press()
-                elif msg_type == "ask_release":
-                    await coord.handle_ask_release()
-                else:
-                    logger.debug("Unknown control message type from student: %r", msg_type)
-
-        send_task = asyncio.create_task(send_loop())
-        recv_task = asyncio.create_task(recv_loop())
+                await hub.receive(student, message)
+        async def overflow():
+            await hub.students[student]["overflow"].wait()
+            await websocket.close(code=1013, reason="Playback fell behind; rejoin the live lecture")
+        tasks = [asyncio.create_task(hub.send_loop(student)), asyncio.create_task(receive()), asyncio.create_task(overflow())]
         try:
-            await asyncio.wait({send_task, recv_task}, return_when=asyncio.FIRST_COMPLETED)
-        except websockets.ConnectionClosed:
-            pass
+            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         finally:
-            send_task.cancel()
-            recv_task.cancel()
-            for t in (send_task, recv_task):
-                try:
-                    await t
-                except (asyncio.CancelledError, websockets.ConnectionClosed):
-                    pass
-            coord.unregister_student_sender()
-            await coord.handle_student_disconnect()
-            active.student_ws = None
-            logger.info("Student disconnected")
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            await hub.leave(student)
 
     # ---------------------------------------------------------------- plumbing
 

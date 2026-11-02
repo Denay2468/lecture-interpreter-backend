@@ -42,7 +42,8 @@
       <p class="muted small">Speak English; the lecturer hears it in Indonesian. Use headphones so the lecture audio doesn't feed back into your microphone.</p>
       <div class="meter" aria-hidden="true"><div id="level"></div></div>
       <div class="row">
-        <button id="enable-mic" class="secondary">Enable microphone</button>
+        <button id="request-question" class="secondary">Raise hand</button>
+          <button id="enable-mic" class="secondary">Enable microphone</button>
         <button id="ask" class="ask-btn" disabled>Hold to ask</button>
       </div>
       <p id="ask-hint" class="muted small"></p>
@@ -51,6 +52,7 @@
   </main>
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/pcm-player.js"></script>
   <script src="js/student.js"></script>
 </body>
 </html>

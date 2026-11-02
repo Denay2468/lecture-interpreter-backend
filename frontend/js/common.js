@@ -62,6 +62,7 @@
       case 4403: return { kind: "fatal", message: reason || (student ? "You can't join this lecture." : "This lecture can't be started (subscription or monthly limit).") };
       case 4404: return { kind: "fatal", message: student ? "That room code wasn't found. Check it and try again." : "Room not found. Check the room label." };
       case 4409: return { kind: "fatal", message: student ? "Another student is already connected to this room (one per room for now)." : (reason || "This room already has a live lecture.") };
+      case 1013: return { kind: "retry", message: "Audio fell behind; rejoining the live lecture." };
       case 4412: return { kind: "retry", message: "No lecture is live in this room yet." };
       case 4413: return { kind: "ended", message: "The lecture has ended." };
       case 1000: case 1001: return { kind: "ended", message: "Disconnected." };

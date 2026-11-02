@@ -34,6 +34,13 @@ class _PendingResult:
     result: TranslatedSegment = field(compare=False)
 
 
+@dataclass
+class StreamingSegment:
+    sequence: int
+    events: asyncio.Queue
+    segment_ready_at: float
+
+
 class StudentPlaybackController:
     """One instance per teacher session.
 
@@ -45,8 +52,9 @@ class StudentPlaybackController:
     segments can be released.
     """
 
-    def __init__(self, session_id: str) -> None:
+    def __init__(self, session_id: str, include_captions: bool = False) -> None:
         self._session_id = session_id
+        self._include_captions = include_captions
         self._heap: list[_PendingResult] = []
         self._next_expected_sequence = 0
         self._playable: asyncio.Queue[TranslatedSegment] = asyncio.Queue()
@@ -67,7 +75,7 @@ class StudentPlaybackController:
             result = pending.result
             self._next_expected_sequence += 1
 
-            if result.state == "delivered" and result.audio:
+            if isinstance(result, StreamingSegment) or (result.state == "delivered" and result.audio) or (self._include_captions and result.source_transcript):
                 self._playable.put_nowait(result)
                 self.segments_played += 1
             else:

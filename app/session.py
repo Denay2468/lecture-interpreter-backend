@@ -53,7 +53,7 @@ from typing import Awaitable, Callable, Optional
 
 from .config import Config
 from .mode_state import ModeStateMachine
-from .playback import StudentPlaybackController
+from .playback import StudentPlaybackController, StreamingSegment
 from .protocol import AudioFrame, decode_frame, ProtocolError
 from .question_pipeline import process_question, QuestionResult, QuestionTranscriber
 from .segmentation import Segmenter
@@ -160,6 +160,23 @@ class SessionCoordinator:
     # aside from passing through to the same place either way)
     # -----------------------------------------------------------------
 
+    @property
+    def question_processing(self):
+        return bool(self._question_tasks)
+
+    @property
+    def question_busy(self):
+        return self.is_question_mode or bool(self._question_tasks)
+
+    def metrics(self):
+        q = self._translation_queue
+        if q is None:
+            return {}
+        total = q.segments_delivered + q.segments_skipped
+        return {"delivered": q.segments_delivered, "failed": q.segments_skipped,
+                "success_percent": round(100 * q.segments_delivered / total, 1) if total else None,
+                "mt_characters": q._http.mt_characters, "tts_characters": q._http.tts_characters}
+
     async def attach_teacher(self, session_id: str) -> None:
         if self._teacher_ingest is not None:
             logger.warning(
@@ -169,22 +186,43 @@ class SessionCoordinator:
             )
             await self._detach_current()
 
-        playback = StudentPlaybackController(session_id)
+        playback = StudentPlaybackController(session_id, include_captions=True)
+
+        streams = {}
+        streaming = self._cfg.streaming_audio_enabled
+        async def on_stream(sequence, event):
+            if event["type"] == "open":
+                stream = StreamingSegment(sequence, asyncio.Queue(maxsize=257), event["ready_at"])
+                streams[sequence] = stream
+                playback.submit(stream)
+                return
+            stream = streams.get(sequence)
+            if stream is not None:
+                if event["type"] == "audio_chunk" and stream.events.qsize() >= 256:
+                    raise RuntimeError("Audio stream backlog exceeded")
+                stream.events.put_nowait(event)
+                if event["type"] == "segment_end":
+                    streams.pop(sequence, None)
 
         def on_translated(result: TranslatedSegment) -> None:
             # Deliver first. Optional diagnostics cannot block the event loop
             # or prevent this sequence from reaching the reorder buffer.
-            playback.submit(result)
+            if not streaming:
+                playback.submit(result)
             self._schedule_debug(result)
 
-        translation_queue = TranslationQueue(self._cfg, session_id, on_translated=on_translated)
+        translation_queue = TranslationQueue(self._cfg, session_id, on_translated=on_translated, on_stream=on_stream if streaming else None)
         translation_queue.start()
 
         segmenter = Segmenter(self._cfg, session_id, on_segment=translation_queue.enqueue)
-        await segmenter.start()
-
         ingest = TeacherAudioIngest(self._cfg, session_id, on_smoothed_frame=segmenter.handle_frame)
-        await ingest.start()
+        try:
+            await segmenter.start()
+            await ingest.start()
+        except BaseException:
+            await segmenter.stop()
+            await translation_queue.stop()
+            raise
 
         self._playback = playback
         self._translation_queue = translation_queue
@@ -395,9 +433,10 @@ class SessionCoordinator:
     async def _process_and_deliver_question(self, audio: bytes, transcriber=None) -> None:
         session_id = self._teacher_session_id or "no-active-teacher"
         translate = self._translation_queue.translate_question if self._translation_queue is not None else None
+        synthesize = self._translation_queue.synthesize_question if self._translation_queue is not None else None
         try:
             result: QuestionResult = await process_question(
-                self._cfg, session_id, audio, transcriber=transcriber, translate_fn=translate,
+                self._cfg, session_id, audio, transcriber=transcriber, translate_fn=translate, synthesize_fn=synthesize,
             )
             await self._handle_question_result(result)
         except asyncio.CancelledError:

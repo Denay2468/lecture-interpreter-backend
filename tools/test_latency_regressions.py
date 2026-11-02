@@ -80,7 +80,7 @@ class LatencyTests(unittest.IsolatedAsyncioTestCase):
             async def recv(self):
                 await asyncio.sleep(.001)
                 return '{"audio": "YQ=="}'  # never isFinal; recv never stalls
-        cfg = Config(elevenlabs_api_key='test', elevenlabs_voice_id='test', tts_total_timeout_s=.02)
+        cfg = Config(elevenlabs_api_key='test', elevenlabs_voice_id='test', tts_total_timeout_s=.02, tts_transport='websocket')
         with patch('websockets.connect', return_value=Socket()):
             with self.assertRaises(asyncio.TimeoutError):
                 await asyncio.wait_for(synthesize_speech(cfg, 'hello'), .5)

@@ -314,6 +314,17 @@ class SessionCoordinator:
         # speaking. Opening the Deepgram connection takes several seconds, and
         # doing it at release (as before) put all of that after they finished.
         self._transcriber = self._transcriber_factory(self._cfg, self._teacher_session_id or "no-active-teacher")
+        if (self._transcriber_factory is QuestionTranscriber
+                and self._cfg.incremental_phrases_enabled
+                and self._translation_queue is not None
+                and self._send_audio_to_teacher is not None):
+            from .live_question import LiveQuestionTranscriber
+            self._transcriber = LiveQuestionTranscriber(
+                self._cfg, self._teacher_session_id or "no-active-teacher",
+                self._translation_queue.translate_question,
+                self._translation_queue.synthesize_question,
+                self._send_audio_to_teacher,
+            )
         self._transcriber.start()
 
         # Rule 3: the segment that was mid-flight when the teacher got
@@ -435,6 +446,17 @@ class SessionCoordinator:
         translate = self._translation_queue.translate_question if self._translation_queue is not None else None
         synthesize = self._translation_queue.synthesize_question if self._translation_queue is not None else None
         try:
+            if hasattr(transcriber, "finish_live"):
+                try:
+                    source, translated = await transcriber.finish_live()
+                    message = {"type": "question_delivered", "source_transcript": source,
+                               "translated_text": translated}
+                except Exception:
+                    message = {"type": "question_failed",
+                               "error": "Live question failed; some audio may already have played. Please retry."}
+                if self._send_control_to_student is not None:
+                    await self._send_control_to_student(message)
+                return
             result: QuestionResult = await process_question(
                 self._cfg, session_id, audio, transcriber=transcriber, translate_fn=translate, synthesize_fn=synthesize,
             )

@@ -237,3 +237,15 @@ increase lag. Very short phrases can reduce translation quality. Test continuous
 speech and negations, and compare `stable_phrase` logs against `speech_final`.
 Set `INCREMENTAL_PHRASES_ENABLED=false` to restore endpoint-based behavior.
 Playback ACK timing still excludes speech recognition / phrase accumulation.
+
+### Live student questions
+
+With incremental phrases enabled, student final STT chunks are translated and
+synthesized serially while Ask is held. The teacher receives complete MP3 phrases
+through the existing player (not PCM chunk streaming). Early Finalize also applies
+to English question drafts. Release drains remaining phrases; disconnect cancels
+pending work. Failures are reported at completion and never replay the entire
+question after partial playback. Already heard audio cannot be retracted.
+Short-phrase translation and playback backlog require live quality/latency tests;
+2–5-word lag is a target, not a guarantee. Disable incremental phrases to restore
+the original release-based question pipeline with its batch STT fallback.

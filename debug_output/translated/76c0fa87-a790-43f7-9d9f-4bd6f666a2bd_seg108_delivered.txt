@@ -1,0 +1,3 @@
+source: 'sekitar 3 cm saja.'
+translated: 'only about 3 cm.'
+state: delivered

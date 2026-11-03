@@ -1,0 +1,3 @@
+source: 'buat apa memangnya'
+translated: "What's the point, anyway?"
+state: delivered

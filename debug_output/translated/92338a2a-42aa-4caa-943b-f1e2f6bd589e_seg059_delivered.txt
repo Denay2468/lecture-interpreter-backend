@@ -1,0 +1,3 @@
+source: 'Secara lama, kamu cari tahu bahanbahannya.'
+translated: 'Take your time to find out what the ingredients are.'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'yang berupa, Ew yang bertugas memberi tahu makanan itu kalorinya sekian, proteinnya sekian'
+translated: 'such as, Ew, which is responsible for telling you that a food has this many calories and this much protein'
+state: delivered

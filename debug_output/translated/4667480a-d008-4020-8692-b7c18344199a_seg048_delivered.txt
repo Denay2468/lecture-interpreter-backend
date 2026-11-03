@@ -1,0 +1,3 @@
+source: 'Yang omset tuh dari 20.000 jadi 100.000 tuh buat main BL tuh abis itu 100 ribu ini diputer lagi,'
+translated: 'The revenue went from 20,000 to 100,000—that was used to play BL—and then that 100,000 was reinvested,'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'pake jangan jangan percaya pake gitu tuh'
+translated: 'Don’t just use it—don’t just trust it like that.'
+state: delivered

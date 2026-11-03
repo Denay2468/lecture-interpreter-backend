@@ -1,0 +1,3 @@
+source: 'Terima kasih, apakah kamu bisa bahasa English?'
+translated: 'Thank you. Do you speak English?'
+state: delivered

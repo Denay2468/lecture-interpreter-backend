@@ -1,0 +1,3 @@
+source: 'ya nanti ya satu lu,'
+translated: 'Yeah, later, just one,'
+state: delivered

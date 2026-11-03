@@ -1,0 +1,3 @@
+source: 'Selamat pagi hari ini kita akan belajar tentang sistem komputer'
+translated: 'Good morning. Today we’re going to learn about computer systems.'
+state: delivered

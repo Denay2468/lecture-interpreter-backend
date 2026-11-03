@@ -1,0 +1,3 @@
+source: 'Iya kita akan'
+translated: "Yes, we'll"
+state: delivered

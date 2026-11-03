@@ -1,0 +1,3 @@
+source: 'Ada September.'
+translated: "There's September."
+state: delivered

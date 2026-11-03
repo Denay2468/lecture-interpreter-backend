@@ -1,0 +1,3 @@
+source: 'macet menurut Bapak Jakarta ini seperti'
+translated: 'According to this Jakarta resident, traffic jams are like'
+state: delivered

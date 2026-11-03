@@ -1,0 +1,3 @@
+source: 'nonton wordingnya'
+translated: 'Check out the wording'
+state: delivered

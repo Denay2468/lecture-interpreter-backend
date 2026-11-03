@@ -1,0 +1,3 @@
+source: 'Diceritakan tentang dirinya Farhan? Oke, bisa mbak Saya lahir dan besar di Jakarta.'
+translated: 'Can you tell us about Farhan? Sure, I can. I was born and raised in Jakarta.'
+state: delivered

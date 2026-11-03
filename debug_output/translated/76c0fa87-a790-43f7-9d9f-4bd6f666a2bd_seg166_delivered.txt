@@ -1,0 +1,3 @@
+source: 'yang kamu tentang kota Jakarta apa? Ada yang lain gak? Mustinya banyak'
+translated: 'What do you know about Jakarta? Is there anything else? There must be a lot.'
+state: delivered

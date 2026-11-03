@@ -1,0 +1,3 @@
+source: 'Point pentingnya tim kalian nggak bikin AI sendiri. Kalian menyambungkan layanan yang udah ada ibaratnya tuh kayak ngebangun rumah, jadi'
+translated: 'The key point is that your team isn’t building its own AI. You’re connecting existing services—it’s kind of like building a house, so'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'Jadi kayak bikin kayak pendeteksi nutrisi'
+translated: "So it's like making a nutrient detector"
+state: delivered

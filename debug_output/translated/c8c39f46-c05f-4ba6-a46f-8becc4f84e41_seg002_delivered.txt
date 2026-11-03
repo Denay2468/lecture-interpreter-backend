@@ -1,0 +1,3 @@
+source: 'Ini bagian yang paling mungkin ditanya, karena ini mata kuliah manajemen project'
+translated: 'This is the part people are most likely to ask about, since this is a project management course'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'but after all still the gas university Indonesia'
+translated: "But after all, it's still the Gas University of Indonesia"
+state: delivered

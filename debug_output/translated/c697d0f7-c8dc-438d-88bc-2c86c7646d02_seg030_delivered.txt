@@ -1,0 +1,3 @@
+source: 'bahwa uji P1 tepat'
+translated: 'that the P1 test is correct'
+state: delivered

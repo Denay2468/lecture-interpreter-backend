@@ -1,0 +1,3 @@
+source: 'Apakah ini pasien pernah menuju ke bandara?'
+translated: 'Has this patient ever been to the airport?'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'masih segaga hal ini?'
+translated: 'Are you still confused about this?'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'Bayangkan kamu mau tahu kalau Dina gornya lagi kamu makan.'
+translated: "Imagine you want to know if Dina is frying it while you're eating."
+state: delivered

@@ -1,0 +1,3 @@
+source: 'terus disiplin masih kurang terakhir sembarangan oke kalo misalnya yang indigo suka'
+translated: 'Still not disciplined enough—last time I was careless. Okay, if, for example, the Indigo kids like it...'
+state: delivered

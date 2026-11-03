@@ -1,0 +1,3 @@
+source: 'saya dari Universitas Ham media Yogyakarta'
+translated: "I'm from Ham Media University in Yogyakarta"
+state: delivered

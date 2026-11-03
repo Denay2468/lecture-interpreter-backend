@@ -1,0 +1,3 @@
+source: 'salah satunya Kang Mini, kota tua nih ya jadi'
+translated: 'One of them is Kang Mini—this is the old town, right? So'
+state: delivered

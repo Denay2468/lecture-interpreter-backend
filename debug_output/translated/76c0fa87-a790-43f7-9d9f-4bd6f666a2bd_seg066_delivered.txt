@@ -1,0 +1,3 @@
+source: 'Lagi sibuk enggak'
+translated: 'Are you busy right now?'
+state: delivered

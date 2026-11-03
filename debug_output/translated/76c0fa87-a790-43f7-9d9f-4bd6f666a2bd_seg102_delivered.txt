@@ -1,0 +1,3 @@
+source: 'jangan terlalu pendek. Saya cuma ingin dirapikan,'
+translated: "Don't make it too short. I just want it trimmed,"
+state: delivered

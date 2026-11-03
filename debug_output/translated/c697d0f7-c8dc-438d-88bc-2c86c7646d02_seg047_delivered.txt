@@ -1,0 +1,3 @@
+source: 'depan minggu'
+translated: 'next week'
+state: delivered

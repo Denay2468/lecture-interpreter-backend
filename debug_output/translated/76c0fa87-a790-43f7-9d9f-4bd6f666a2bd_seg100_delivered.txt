@@ -1,0 +1,3 @@
+source: 'Saya cuma dirapikan,'
+translated: 'I just got a quick touch-up,'
+state: delivered

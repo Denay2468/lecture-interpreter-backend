@@ -1,0 +1,3 @@
+source: 'Apakah ini bass yang pernah penunjuk dibanding sekarang'
+translated: 'Is this bass more prominent than it is now?'
+state: delivered

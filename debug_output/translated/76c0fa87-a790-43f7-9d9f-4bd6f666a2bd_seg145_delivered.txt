@@ -1,0 +1,3 @@
+source: 'naik ya sekarang'
+translated: "Let's go now"
+state: delivered

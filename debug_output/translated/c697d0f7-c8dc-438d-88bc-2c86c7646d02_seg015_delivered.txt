@@ -1,0 +1,3 @@
+source: 'Saya lupa nama kamu,'
+translated: 'I forgot your name,'
+state: delivered

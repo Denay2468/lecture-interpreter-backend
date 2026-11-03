@@ -1,0 +1,3 @@
+source: 'kemarin masih 8000 deh Bu'
+translated: "It was still 8,000 yesterday, Ma'am."
+state: delivered

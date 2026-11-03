@@ -1,0 +1,3 @@
+source: 'Pagi Bu tomatnya masih segar hal ini wah pagi juga makan'
+translated: "Good morning, Ma'am. The tomatoes are still fresh—wow, I’ll have some for breakfast, too."
+state: delivered

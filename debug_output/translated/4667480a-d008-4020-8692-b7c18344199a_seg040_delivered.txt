@@ -1,0 +1,3 @@
+source: 'Nggak, maksud tahu kalau'
+translated: 'No, I mean, I know that'
+state: delivered

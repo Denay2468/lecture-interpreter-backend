@@ -1,0 +1,3 @@
+source: 'sukunya, Indonesia Barat,'
+translated: 'its ethnic group, Western Indonesia,'
+state: delivered

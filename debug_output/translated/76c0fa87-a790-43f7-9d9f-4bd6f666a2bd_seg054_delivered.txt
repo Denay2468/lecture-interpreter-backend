@@ -1,0 +1,3 @@
+source: 'Dimana stishing belida'
+translated: 'Where is Belida Stitching?'
+state: delivered

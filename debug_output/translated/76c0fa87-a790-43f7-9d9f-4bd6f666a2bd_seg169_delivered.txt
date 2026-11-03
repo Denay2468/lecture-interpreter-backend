@@ -1,0 +1,3 @@
+source: 'tentang Jakarta apa Bu yang sukanya masyarakatnya ramah ya ya pokoknya bagus sebetulnya cuman kurang ke sih'
+translated: 'What do you like about Jakarta, Ma? The people are friendly, right? Yeah, it’s great, actually—it’s just a little lacking, though.'
+state: delivered

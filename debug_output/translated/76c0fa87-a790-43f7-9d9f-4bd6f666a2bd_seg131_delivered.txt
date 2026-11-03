@@ -1,0 +1,3 @@
+source: 'warnanya bagus banget'
+translated: 'The color is really nice'
+state: delivered

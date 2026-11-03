@@ -1,0 +1,3 @@
+source: 'For warm game,'
+translated: 'For a friendly game,'
+state: delivered

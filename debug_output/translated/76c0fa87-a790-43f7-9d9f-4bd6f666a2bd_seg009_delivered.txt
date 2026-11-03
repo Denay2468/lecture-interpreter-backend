@@ -1,0 +1,3 @@
+source: 'Nama saya Adinil, saya dari Yemama, saya belajar informasi teknologi'
+translated: "My name is Adinil; I'm from Yemama, and I'm studying information technology."
+state: delivered

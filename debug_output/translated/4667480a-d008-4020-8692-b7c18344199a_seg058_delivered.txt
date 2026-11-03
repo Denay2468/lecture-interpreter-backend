@@ -1,0 +1,3 @@
+source: 'kamu nggak passion kerja bagus'
+translated: "You don't have a passion for doing good work"
+state: delivered

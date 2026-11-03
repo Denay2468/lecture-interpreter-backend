@@ -1,0 +1,3 @@
+source: 'foto editing ke image recognition API'
+translated: 'Photo editing to image recognition API'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'jadi aku apa namanya'
+translated: "So, what am I, what's it called?"
+state: delivered

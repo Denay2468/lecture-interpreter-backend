@@ -1,0 +1,3 @@
+source: 'jangan jujur, stres namanya. Kecak kalo kamu.'
+translated: "Don't be honest—that's called stress. You're so cool."
+state: delivered

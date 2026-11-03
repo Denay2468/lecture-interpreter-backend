@@ -1,0 +1,3 @@
+source: 'Indonesia.'
+translated: 'Indonesia.'
+state: delivered

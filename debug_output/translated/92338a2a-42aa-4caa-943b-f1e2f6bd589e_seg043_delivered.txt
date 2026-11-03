@@ -1,0 +1,3 @@
+source: 'cengeng nih nanti nanti'
+translated: "You're such a crybaby—just you wait."
+state: delivered

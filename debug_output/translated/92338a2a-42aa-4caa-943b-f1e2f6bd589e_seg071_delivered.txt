@@ -1,0 +1,3 @@
+source: 'Hasilnya tampil nanti di dashboard dengan reflexon kalori harian.'
+translated: 'The results will appear later on the dashboard along with your daily calorie count.'
+state: delivered

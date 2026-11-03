@@ -1,0 +1,3 @@
+source: 'Ost'
+translated: 'OST'
+state: delivered

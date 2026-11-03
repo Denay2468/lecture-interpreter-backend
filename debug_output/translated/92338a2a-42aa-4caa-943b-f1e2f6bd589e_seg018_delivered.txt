@@ -1,0 +1,3 @@
+source: 'Jadi'
+translated: 'So'
+state: delivered

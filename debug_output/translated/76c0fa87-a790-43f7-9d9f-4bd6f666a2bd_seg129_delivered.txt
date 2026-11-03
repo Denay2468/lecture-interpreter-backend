@@ -1,0 +1,3 @@
+source: 'baru datang subuh tadi'
+translated: 'just arrived at dawn'
+state: delivered

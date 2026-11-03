@@ -1,0 +1,3 @@
+source: 'Halo nama saya Adi saya dari Nema saya pelajar belajar informasi teknologi'
+translated: 'Hello, my name is Adi. I’m from Nema, and I’m a student studying information technology.'
+state: delivered

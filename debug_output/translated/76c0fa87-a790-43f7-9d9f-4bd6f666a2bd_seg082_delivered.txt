@@ -1,0 +1,3 @@
+source: 'Boleh aja.'
+translated: 'Sure.'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'apakah anda memiliki kamu kosong malang ini?'
+translated: 'Do you have any vacancies in Malang right now?'
+state: delivered

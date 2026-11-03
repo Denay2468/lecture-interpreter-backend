@@ -1,3 +1,0 @@
-source: 'saya sudah menikah saya punya tuakan net'
-translated: "I'm married. I have an older brother."
-state: delivered

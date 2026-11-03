@@ -1,3 +1,0 @@
-source: 'Sama,'
-translated: 'Same,'
-state: delivered

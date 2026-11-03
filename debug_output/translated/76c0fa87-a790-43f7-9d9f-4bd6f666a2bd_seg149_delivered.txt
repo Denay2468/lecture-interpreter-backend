@@ -1,3 +1,0 @@
-source: 'Iya mbak'
-translated: "Yes, ma'am"
-state: delivered

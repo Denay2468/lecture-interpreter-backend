@@ -1,3 +1,0 @@
-source: 'So API is like as something the connect like'
-translated: 'So an API is like something that connects, like'
-state: delivered

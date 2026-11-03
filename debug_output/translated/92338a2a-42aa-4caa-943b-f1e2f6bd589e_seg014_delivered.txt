@@ -1,3 +1,0 @@
-source: 'Kesalanya itu timaqsha.'
-translated: 'His mistake was timaqsha.'
-state: delivered

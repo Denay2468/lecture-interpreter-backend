@@ -1,3 +1,0 @@
-source: 'Ini HKnya berapa?'
-translated: 'How much is the HK here?'
-state: delivered

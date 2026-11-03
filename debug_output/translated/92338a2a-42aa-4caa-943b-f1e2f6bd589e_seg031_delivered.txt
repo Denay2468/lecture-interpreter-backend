@@ -1,3 +1,0 @@
-source: 'Jadi kami setelah ngefoto'
-translated: 'So, after we took some photos,'
-state: delivered

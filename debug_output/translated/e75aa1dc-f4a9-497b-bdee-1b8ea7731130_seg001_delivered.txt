@@ -1,3 +1,0 @@
-source: 'Saya orangnya yang extrovert'
-translated: "I'm an extrovert"
-state: delivered

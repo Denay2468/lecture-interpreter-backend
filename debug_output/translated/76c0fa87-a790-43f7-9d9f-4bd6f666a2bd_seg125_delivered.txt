@@ -1,3 +1,0 @@
-source: 'masih segar pakai'
-translated: 'still in good condition'
-state: delivered

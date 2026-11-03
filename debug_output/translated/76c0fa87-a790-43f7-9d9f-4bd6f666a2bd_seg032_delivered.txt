@@ -1,3 +1,0 @@
-source: 'dimana station'
-translated: 'where is the station'
-state: delivered

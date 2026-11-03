@@ -1,3 +1,0 @@
-source: 'apa? Menurut saya Jakarta, macammacam'
-translated: 'What? I’d say Jakarta—all sorts of things.'
-state: delivered

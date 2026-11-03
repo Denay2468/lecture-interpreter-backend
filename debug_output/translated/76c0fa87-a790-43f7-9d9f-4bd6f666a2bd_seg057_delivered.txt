@@ -1,3 +1,0 @@
-source: 'Minta emino'
-translated: 'Ask for emino'
-state: delivered

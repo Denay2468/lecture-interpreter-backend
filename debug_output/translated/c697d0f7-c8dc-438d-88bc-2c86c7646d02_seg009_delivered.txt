@@ -1,3 +1,0 @@
-source: 'Selamat pagi hari ini kita akan belajar tentang sistem kemjuta'
-translated: 'Good morning! Today we’re going to learn about the Kemjuta system.'
-state: delivered

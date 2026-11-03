@@ -1,3 +1,0 @@
-source: 'Dimana kamar kecil?'
-translated: "Where's the restroom?"
-state: delivered

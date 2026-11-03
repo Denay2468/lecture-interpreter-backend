@@ -1,3 +1,0 @@
-source: 'Apa kata'
-translated: 'What do you think?'
-state: delivered

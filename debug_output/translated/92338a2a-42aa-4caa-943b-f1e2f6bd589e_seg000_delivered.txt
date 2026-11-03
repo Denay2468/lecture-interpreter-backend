@@ -1,3 +1,0 @@
-source: 'Actually I was about sleep at safe'
-translated: 'Actually, I was about to go to sleep safely'
-state: delivered

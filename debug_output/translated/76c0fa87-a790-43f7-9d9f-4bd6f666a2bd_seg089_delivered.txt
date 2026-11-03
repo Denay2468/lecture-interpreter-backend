@@ -1,3 +1,0 @@
-source: 'mau ganti lampu di teras'
-translated: 'I want to replace the light on the porch'
-state: delivered

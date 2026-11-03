@@ -1,3 +1,0 @@
-source: 'Permisi'
-translated: 'Excuse me'
-state: delivered

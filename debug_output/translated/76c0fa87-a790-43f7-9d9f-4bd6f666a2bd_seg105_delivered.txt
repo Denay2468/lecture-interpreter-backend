@@ -1,3 +1,0 @@
-source: 'medad? Siap kirakira mau dipotong berapa seni medad?'
-translated: 'Medad? How much do you think you want to cut off the medad?'
-state: delivered

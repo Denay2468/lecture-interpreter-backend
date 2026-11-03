@@ -1,3 +1,0 @@
-source: 'saya punya revorensi'
-translated: 'I have a reference'
-state: delivered

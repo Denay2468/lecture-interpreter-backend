@@ -1,3 +1,0 @@
-source: 'Sisten sudah siap'
-translated: 'The system is ready'
-state: delivered

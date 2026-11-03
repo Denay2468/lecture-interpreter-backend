@@ -1,3 +1,0 @@
-source: 'ya kita akan ada ujian depan minggu'
-translated: 'Yeah, we have a test next week.'
-state: delivered

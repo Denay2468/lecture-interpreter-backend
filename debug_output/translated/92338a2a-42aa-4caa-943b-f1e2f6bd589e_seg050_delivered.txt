@@ -1,3 +1,0 @@
-source: 'I want to live.'
-translated: 'I want to live.'
-state: delivered

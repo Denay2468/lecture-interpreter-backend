@@ -1,3 +1,0 @@
-source: 'Buat apa memangnya'
-translated: "What's the point, anyway?"
-state: delivered

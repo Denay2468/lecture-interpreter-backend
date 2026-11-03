@@ -1,3 +1,0 @@
-source: 'yang'
-translated: 'which'
-state: delivered

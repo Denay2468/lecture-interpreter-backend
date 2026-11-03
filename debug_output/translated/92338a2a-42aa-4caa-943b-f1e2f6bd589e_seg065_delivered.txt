@@ -1,3 +1,0 @@
-source: 'atau kita unggah dari galeri'
-translated: 'or we can upload it from the gallery'
-state: delivered

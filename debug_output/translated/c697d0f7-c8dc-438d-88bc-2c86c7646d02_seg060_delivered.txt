@@ -1,3 +1,0 @@
-source: 'nama saya Vewish'
-translated: 'My name is Vewish'
-state: delivered

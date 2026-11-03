@@ -1,3 +1,0 @@
-source: 'masih tegaranya,'
-translated: "he's still standing strong,"
-state: delivered

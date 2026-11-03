@@ -1,3 +1,0 @@
-source: 'Lalu catat'
-translated: 'Then write it down'
-state: delivered

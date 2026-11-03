@@ -1,3 +1,0 @@
-source: 'saya aloci'
-translated: 'My name is Aloci'
-state: delivered

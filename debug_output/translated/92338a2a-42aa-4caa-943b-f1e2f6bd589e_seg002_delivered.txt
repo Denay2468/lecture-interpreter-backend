@@ -1,3 +1,0 @@
-source: 'MLB Enray 4.'
-translated: 'MLB Enray 4.'
-state: delivered

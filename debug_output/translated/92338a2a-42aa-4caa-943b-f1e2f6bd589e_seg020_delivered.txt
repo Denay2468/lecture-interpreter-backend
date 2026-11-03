@@ -1,3 +1,0 @@
-source: 'Jadi kami ngebikin'
-translated: 'So we made'
-state: delivered

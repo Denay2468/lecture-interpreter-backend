@@ -1,3 +1,0 @@
-source: 'Selesaikan dulu analisis lalu desain baru bangun.'
-translated: 'Complete the analysis first, then the design, and finally the construction.'
-state: delivered

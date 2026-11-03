@@ -1,0 +1,3 @@
+source: 'dengerin dulu sayang jadi dari 10 pro'
+translated: 'Listen first, honey—so out of 10 pros'
+state: delivered

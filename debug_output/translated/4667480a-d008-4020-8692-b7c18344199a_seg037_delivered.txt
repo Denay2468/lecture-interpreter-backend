@@ -1,0 +1,3 @@
+source: 'SMA aku. Ya tol namanya ih kenapa sih aku jadi kasar tuh kamu kan mau'
+translated: 'My high school. Yeah, that’s the name. Ugh, why did I get so rude? You wanted to...'
+state: delivered

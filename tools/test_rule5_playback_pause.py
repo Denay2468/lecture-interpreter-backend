@@ -52,6 +52,8 @@ async def recv_item(ws, timeout: float, keep_captions: bool = False):
         if isinstance(msg, bytes):
             return ("audio", decode_playback_frame(msg)[0])
         data = json.loads(msg)
+        if data.get("type") in ("welcome", "classroom", "question_granted"):
+            continue
         if data.get("type") == "segment" and not keep_captions:
             continue  # the caption that precedes every audio frame; checked once below
         return ("ctrl", data)
@@ -75,6 +77,10 @@ async def silence_or_item(ws, seconds: float):
 
 
 async def press(ws) -> None:
+    hub = SERVER._active[LEGACY_KEY].classroom
+    student = next(iter(hub.students))
+    await hub.request(student)
+    await hub.grant(student)
     await ws.send(json.dumps({"type": "ask_press"}))
     await drain_until(ws, QUESTION)
 
@@ -84,7 +90,8 @@ async def release(ws) -> None:
 
 
 async def main() -> int:
-    server = Server(Config())
+    global SERVER
+    server = SERVER = Server(Config())
     playback = StudentPlaybackController("t")
     server._active[LEGACY_KEY].coordinator._playback = playback  # stands in for an attached teacher session
 
@@ -93,7 +100,7 @@ async def main() -> int:
             print("\ntest_lecture_mode_delivers_normally")
             check(await recv_item(ws, 3) == ("ctrl", {"type": "mode_changed", "mode": "lecture"}), "told 'lecture' on connect")
             playback.submit(seg(0))
-            check(await recv_item(ws, 2, keep_captions=True) == ("ctrl", {"type": "segment", "sequence": 0, "source_transcript": "src0", "translated_text": "tr0"}),
+            check(await recv_item(ws, 2, keep_captions=True) == ("ctrl", {"type": "segment", "sequence": 0, "source_transcript": "src0", "translated_text": "tr0", "audio_available": True}),
                   "each segment's text arrives just before its audio, for captions")
             check(await recv_item(ws, 2) == ("audio", 0), "a finished segment is delivered promptly in Lecture Mode")
 
@@ -130,6 +137,7 @@ async def main() -> int:
             except asyncio.TimeoutError:
                 check(False, "held segments never delivered after release")
 
+    await server._active[LEGACY_KEY].classroom.close()
     print()
     if FAILURES:
         print(f"{FAILURES} check(s) FAILED")

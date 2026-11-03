@@ -1,0 +1,3 @@
+source: 'Stress, momen apa? Black Jack?'
+translated: 'Stress—what’s that? Blackjack?'
+state: delivered

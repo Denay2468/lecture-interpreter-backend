@@ -1,0 +1,3 @@
+source: 'Coba 50 ribu diputar lagi jadi apa nih di'
+translated: "Let's see what happens if we spin 50,000 again in"
+state: delivered

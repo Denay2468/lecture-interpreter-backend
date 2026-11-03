@@ -1,0 +1,3 @@
+source: 'menunggu sampai selesai jam 5 bisa garagara'
+translated: "Waiting until 5 o'clock is over could be a hassle"
+state: delivered

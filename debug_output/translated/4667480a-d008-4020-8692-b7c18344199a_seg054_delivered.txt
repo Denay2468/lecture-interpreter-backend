@@ -1,0 +1,3 @@
+source: 'lagi ngatas ini, kenapa saya?'
+translated: 'Here I go again—why me?'
+state: delivered

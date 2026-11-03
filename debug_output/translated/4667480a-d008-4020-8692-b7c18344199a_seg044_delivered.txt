@@ -1,0 +1,3 @@
+source: 'Ya nggak? Yang aku 20.000 aku juga pernah'
+translated: 'Right? I’ve also had 20,000 of them'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'di finalis, 10 finalis itu'
+translated: 'among the finalists, those 10 finalists'
+state: delivered

@@ -1,0 +1,3 @@
+source: 'ya kan tetap misal 50 miliar kamu masukin semua jadi 5T'
+translated: 'Right? For example, if you put in 50 billion, that makes it 5T.'
+state: delivered

@@ -133,7 +133,16 @@
     el.modeBanner.hidden = true;
     const r = el.legacy.checked ? null : selectedRoom();
     el.liveJoinLine.hidden = !r;
-    if (r) el.liveJoinCode.textContent = r.join_code;
+    if (r) {
+      el.liveJoinCode.textContent = r.join_code;
+      const join = new URL("student.html", location.href); join.searchParams.set("code", r.join_code);
+      join.searchParams.set("wport", new URL(el.serverUrl.value).port || "8765");
+      $("join-link").href = join.href;
+      const qr = qrcode(0, "M"); qr.addData(join.href); qr.make();
+      $("join-qr").innerHTML = qr.createSvgTag({cellSize:3, margin:12, scalable:false});
+    }
+    $("join-link").hidden = !r;
+    $("join-qr").hidden = !r;
     el.timer.textContent = "00:00";
     timerId = setInterval(() => { el.timer.textContent = fmt(performance.now() - liveAt); }, 500);
   }
@@ -141,7 +150,7 @@
   function addQuestionEntry() {
     el.questionsEmpty.hidden = true;
     const li = document.createElement("li");
-    li.textContent = new Date().toLocaleTimeString() + "  Question from a student (playing in Indonesian)";
+    li.textContent = new Date().toLocaleTimeString() + "  Question from a student (playing in your selected language)";
     el.questions.prepend(li);
   }
 
@@ -153,6 +162,25 @@
     }
     let msg;
     try { msg = JSON.parse(data); } catch (e) { return; }
+    if (msg.type === "classroom") {
+      $("classroom-count").textContent = msg.students + " students connected";
+      $("question-queue").replaceChildren();
+      msg.waiting.forEach((id, index) => {
+        const button = document.createElement("button");
+        button.textContent = "Allow student " + (index+1) + " (" + id.slice(-4) + ")";
+        button.disabled = !!msg.speaker;
+        button.onclick = () => ws.send(JSON.stringify({type:"grant_question", student_id:id}));
+        $("question-queue").appendChild(button);
+      });
+      return;
+    }
+    if (msg.type === "metrics") {
+      const ms = (v) => v == null ? "—" : Math.round(v) + " ms";
+      $("session-metrics").textContent = "Audio delivery: " + msg.delivered + " successful / " + msg.failed + " failed. Success: " + (msg.success_percent == null ? "—" : msg.success_percent + "%") +
+        ". Phrase-ready → playback report p50: " + ms(msg.segment_to_playback_ack_p50_ms) + ", p95: " + ms(msg.segment_to_playback_ack_p95_ms) + " (" + msg.playback_samples + " reports). MT characters: " + msg.mt_characters + "; TTS characters: " + msg.tts_characters +
+        ". Estimated provider cost: " + (msg.estimated_cost == null ? "configure rates in .env" : msg.estimated_cost.toFixed(4) + " " + msg.cost_currency + "; hourly projection " + msg.projected_hourly_cost.toFixed(3));
+      return;
+    }
     if (msg.type !== "mode_changed") return;
     if (state === "starting") goLive(); // the first message means the speech engine is ready
     mode = msg.mode === "question" ? "question" : "lecture";
@@ -201,12 +229,14 @@
     setStatus("Starting the lecture... the speech engine needs a few seconds to warm up.", "busy");
 
     const base = el.serverUrl.value.trim().replace(/\/+$/, "");
-    const url = legacy
+    let url = legacy
       ? base + "/ws/teacher?session_id=web-" + Math.random().toString(36).slice(2, 8)
       : base + "/ws/teacher?room=" + encodeURIComponent(room) + "&token=" + encodeURIComponent(token);
+    url += "&source=" + encodeURIComponent($("source-language").value) + "&configure=1";
     let sock;
     try { sock = new WebSocket(url); } catch (e) { backToSetup("That server address isn't valid: " + base, "error"); return; }
     sock.binaryType = "arraybuffer";
+    sock.onopen = () => sock.send(JSON.stringify({type:"configure_lecture", glossary:$("course-glossary").value}));
     ws = sock;
     sock.onmessage = (ev) => { if (sock === ws) handleMessage(ev.data); };
     sock.onclose = (ev) => { if (sock === ws) handleClosed(ev); };

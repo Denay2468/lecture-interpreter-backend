@@ -1,0 +1,3 @@
+source: 'ada satu orang yang ngejelasin project yang berhubungan hampir mirip sama judul gitu sayang'
+translated: 'There was one person who explained a project that was almost exactly like the title, unfortunately.'
+state: delivered

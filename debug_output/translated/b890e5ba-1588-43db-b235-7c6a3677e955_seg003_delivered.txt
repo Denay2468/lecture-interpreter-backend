@@ -1,0 +1,3 @@
+source: 'belajar untuk scholarship'
+translated: 'studying for a scholarship'
+state: delivered

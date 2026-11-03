@@ -25,6 +25,11 @@
           <div class="row"><button id="create-room" class="secondary" type="button">Create room</button></div>
         </details>
       </div>
+      <label for="source-language">Language spoken by the lecturer</label>
+      <select id="source-language"><option value="id">Indonesian</option><option value="en">English</option><option value="zh">Mandarin Chinese</option><option value="ja">Japanese</option><option value="es">Spanish</option></select>
+      <label for="course-glossary">Course glossary (optional, source term = English term)</label>
+      <textarea id="course-glossary" rows="4" maxlength="8000" placeholder="jaringan komputer = computer network&#10;tektokan = back-and-forth conversation"></textarea>
+      <p class="muted small">Up to 40 terms. Exact phrases are protected during translation. Indonesian slang normalization is enabled by default.</p>
       <div class="row"><button id="start" class="primary">Start lecture</button></div>
       <p id="status" class="status" role="status" aria-live="polite"></p>
       <details class="advanced">
@@ -42,25 +47,25 @@
         <button id="end" class="danger">End lecture</button>
       </div>
       <p id="live-join-line" class="muted" hidden>Students join with the code <span id="live-join-code" class="join-code"></span></p>
+      <p><a id="join-link" target="_blank" rel="noopener">Open student join link</a></p>
+      <div id="join-qr" aria-label="Student join QR code"></div>
+      <p id="classroom-count" role="status"></p>
+      <h2>Raised hands</h2><div id="question-queue"></div>
+      <details><summary>Session measurements</summary><p id="session-metrics" role="status">Waiting for completed segments and playback reports.</p>
+      <p class="muted small">Latency starts when STT finalizes a phrase and ends when the server receives the browser playback report. It excludes capture/STT delay and includes report network time; it is not full speech-to-speech latency.</p>
+      </details>
       <div id="mode-banner" class="banner warn" hidden>A student is asking a question. Your microphone is paused until they finish.</div>
       <p class="muted small" style="margin-top:14px">Microphone level</p>
       <div class="meter" aria-hidden="true"><div id="level"></div></div>
       <h2 style="margin-top:20px">Student questions</h2>
-      <p id="questions-empty" class="muted small">Questions are played to you in Indonesian as they arrive.</p>
+      <p id="questions-empty" class="muted small">Approve a raised hand. Questions are translated into your selected language.</p>
       <ul id="questions" class="log"></ul>
       <p id="note" class="muted small"></p>
-    </section>
-
-    <section class="card" id="history-card">
-      <h2>My recent lectures</h2>
-      <p id="history-empty" class="muted small">Lectures you teach will appear here, with who attended.</p>
-      <div class="table-wrap"><table id="history"><thead><tr><th>Room</th><th>Started</th><th>Length</th><th>Students</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
-      <div id="attendance-panel" class="attendance" hidden></div>
     </section>
   </main>
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/attendance.js"></script>
+  <script src="vendor/qrcode.js"></script>
   <script src="js/teacher.js"></script>
 </body>
 </html>

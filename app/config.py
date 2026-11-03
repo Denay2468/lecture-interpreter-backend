@@ -11,6 +11,16 @@ from dotenv import load_dotenv
 
 @dataclass
 class Config:
+    course_glossary: tuple = ()
+    cost_stt_per_minute: Optional[float] = None
+    cost_mt_per_million: Optional[float] = None
+    cost_tts_per_million: Optional[float] = None
+    cost_currency: str = "USD"
+    streaming_audio_enabled: bool = True
+    incremental_phrases_enabled: bool = True
+    phrase_target_words: int = 4
+    phrase_finalize_interval_ms: int = 700
+    slang_normalization_enabled: bool = True
     # Realtime Transport
     host: str = "0.0.0.0"
     port: int = 8765
@@ -90,6 +100,8 @@ class Config:
     deepl_api_url: str = "https://api-free.deepl.com/v2/translate"
     elevenlabs_api_key: Optional[str] = None
     elevenlabs_voice_id: Optional[str] = None
+    elevenlabs_model_id: str = "eleven_flash_v2_5"
+    tts_transport: str = "http"
 
     # How many segments can be translated/synthesized concurrently.
     # Architecture spec Section 4: processing must never block on mode
@@ -104,6 +116,11 @@ class Config:
     # "never silently discard in-flight work" pattern already used by
     # the Jitter Buffer's flush() and Teacher Audio Ingest's drain.
     translation_drain_timeout_s: float = 30.0
+    # Shared budget across both stages and retries, once a worker starts.
+    translation_segment_timeout_s: float = 30.0
+    # Includes WebSocket connect, reads and normal teardown, not each recv.
+    tts_total_timeout_s: float = 20.0
+    debug_audio_enabled: bool = False
 
     # --- Database / multi-tenant mode ---
     # Unset DATABASE_URL = single-session mode: no accounts, rooms or metering
@@ -155,6 +172,23 @@ def load_config(env_path: str | None = None) -> Config:
         return type(default)(val) if val not in (None, "") else default
 
     cfg = Config()
+    for name in ("streaming_audio_enabled", "incremental_phrases_enabled", "slang_normalization_enabled"):
+        setattr(cfg, name, os.getenv(name.upper(), "true").lower() in ("true", "1", "yes"))
+    for name in ("cost_stt_per_minute", "cost_mt_per_million", "cost_tts_per_million"):
+        value = os.getenv(name.upper(), "").strip()
+        if value:
+            import math
+            rate = float(value)
+            if not math.isfinite(rate) or rate < 0:
+                raise ValueError(name.upper() + " must be a finite non-negative rate")
+            setattr(cfg, name, rate)
+    cfg.phrase_target_words = _get("PHRASE_TARGET_WORDS", cfg.phrase_target_words)
+    cfg.phrase_finalize_interval_ms = _get("PHRASE_FINALIZE_INTERVAL_MS", cfg.phrase_finalize_interval_ms)
+    if not 2 <= cfg.phrase_target_words <= 12:
+        raise ValueError("PHRASE_TARGET_WORDS must be between 2 and 12")
+    if not 300 <= cfg.phrase_finalize_interval_ms <= 5000:
+        raise ValueError("PHRASE_FINALIZE_INTERVAL_MS must be between 300 and 5000")
+    cfg.cost_currency = os.getenv("COST_CURRENCY", "USD")
     cfg.host = os.getenv("HOST", cfg.host)
     cfg.port = _get("PORT", cfg.port)
     cfg.sample_rate_hz = _get("SAMPLE_RATE_HZ", cfg.sample_rate_hz)
@@ -175,9 +209,22 @@ def load_config(env_path: str | None = None) -> Config:
     cfg.deepl_api_url = os.getenv("DEEPL_API_URL", cfg.deepl_api_url)
     cfg.elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY", cfg.elevenlabs_api_key)
     cfg.elevenlabs_voice_id = os.getenv("ELEVENLABS_VOICE_ID", cfg.elevenlabs_voice_id)
+    cfg.elevenlabs_model_id = os.getenv("ELEVENLABS_MODEL_ID", cfg.elevenlabs_model_id).strip()
+    cfg.tts_transport = os.getenv("TTS_TRANSPORT", cfg.tts_transport).strip().lower()
+    if cfg.tts_transport not in ("http", "websocket"):
+        raise ValueError("TTS_TRANSPORT must be http or websocket")
+    if not cfg.elevenlabs_model_id:
+        raise ValueError("ELEVENLABS_MODEL_ID must not be empty")
     cfg.translation_num_workers = _get("TRANSLATION_NUM_WORKERS", cfg.translation_num_workers)
     cfg.translation_max_attempts = _get("TRANSLATION_MAX_ATTEMPTS", cfg.translation_max_attempts)
     cfg.translation_drain_timeout_s = _get("TRANSLATION_DRAIN_TIMEOUT_S", cfg.translation_drain_timeout_s)
+    cfg.translation_segment_timeout_s = _get("TRANSLATION_SEGMENT_TIMEOUT_S", cfg.translation_segment_timeout_s)
+    cfg.tts_total_timeout_s = _get("TTS_TOTAL_TIMEOUT_S", cfg.tts_total_timeout_s)
+    cfg.debug_audio_enabled = os.getenv("DEBUG_AUDIO_ENABLED", "false").strip().lower() in ("1", "true", "yes")
+    if cfg.translation_segment_timeout_s <= 0 or cfg.tts_total_timeout_s <= 0:
+        raise ValueError("Translation and TTS timeouts must be positive")
+    if cfg.translation_num_workers < 1 or cfg.translation_max_attempts < 1:
+        raise ValueError("Translation workers and attempts must be at least one")
 
     cfg.database_url = os.getenv("DATABASE_URL") or cfg.database_url
     cfg.jwt_secret = os.getenv("JWT_SECRET") or cfg.jwt_secret

@@ -27,7 +27,9 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+from urllib.parse import quote, urlencode
 import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Awaitable, Callable, Optional, Union
@@ -36,6 +38,9 @@ import aiohttp
 
 from .config import Config
 from .segmentation import Segment
+from .glossary import protect, unprotect
+from .slang import normalize_indonesian
+from dataclasses import replace
 
 logger = logging.getLogger("translation_pipeline")
 
@@ -49,6 +54,7 @@ class TranslatedSegment:
     audio: Optional[bytes]   # MP3 bytes from ElevenLabs, or None if skipped
     state: str                # "delivered" | "skipped"
     error: Optional[str] = None
+    segment_ready_at: float = 0.0
 
 
 OnTranslated = Callable[[TranslatedSegment], Union[None, Awaitable[None]]]
@@ -63,26 +69,157 @@ SynthesizeFn = Callable[[str], Awaitable[bytes]]
 # than reporting TTFB/timing.
 # ---------------------------------------------------------------------
 
-async def translate_text(cfg: Config, text: str, source_lang: str = "ID", target_lang: str = "EN-US") -> str:
-    """Defaults preserve the original lecture-direction behavior
-    (Indonesian -> English) for existing call sites. Question Mode
-    calls this with source_lang="EN", target_lang="ID" for the
-    student-to-teacher direction."""
-    if not cfg.deepl_api_key:
-        raise RuntimeError("DEEPL_API_KEY not set")
+class TranslationHTTPClient:
+    """One reusable connection pool per lecture, also used for questions.
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            cfg.deepl_api_url,
-            headers={"Authorization": f"DeepL-Auth-Key {cfg.deepl_api_key}"},
-            data={"text": text, "source_lang": source_lang, "target_lang": target_lang},
-            timeout=aiohttp.ClientTimeout(total=15),
-        ) as resp:
-            if resp.status != 200:
-                body = await resp.text()
-                raise RuntimeError(f"DeepL HTTP {resp.status}: {body[:200]}")
-            data = await resp.json()
-            return data["translations"][0]["text"]
+    Created lazily inside the running event loop and closed after workers and
+    question tasks have stopped. No global session or cross-loop resources.
+    """
+
+    def __init__(self, cfg: Config) -> None:
+        self._cfg = cfg
+        self._session: Optional[aiohttp.ClientSession] = None
+        self._closed = False
+        self.mt_characters = 0
+        self.tts_characters = 0
+
+    async def translate(self, text: str, source_lang: str = "ID", target_lang: str = "EN-US") -> str:
+        if self._closed:
+            raise RuntimeError("translation HTTP client is closed")
+        if source_lang.split("-")[0] == target_lang.split("-")[0]:
+            return text
+        if not self._cfg.deepl_api_key:
+            raise RuntimeError("DEEPL_API_KEY not set")
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+        pairs = self._cfg.course_glossary if target_lang.startswith("EN") else ()
+        protected, tagged = protect(text, pairs)
+        # Custom terms take precedence over normalization. Normalize only outside
+        # protected XML elements so an English target such as "go" is untouched.
+        if source_lang == "ID" and self._cfg.slang_normalization_enabled:
+            if tagged:
+                from xml.etree import ElementTree as ET
+                root = ET.fromstring(protected)
+                root.text = normalize_indonesian(root.text or "")
+                for child in root:
+                    child.tail = normalize_indonesian(child.tail or "")
+                protected = ET.tostring(root, encoding="unicode")
+            else:
+                protected = normalize_indonesian(protected)
+        payload = {"text": protected, "source_lang": source_lang, "target_lang": target_lang}
+        if tagged:
+            payload.update(tag_handling="xml", ignore_tags="blbterm")
+        self.mt_characters += len(text)
+        started = time.monotonic()
+        try:
+            async with self._session.post(
+                self._cfg.deepl_api_url,
+                headers={"Authorization": f"DeepL-Auth-Key {self._cfg.deepl_api_key}"},
+                data=payload,
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as resp:
+                if resp.status != 200:
+                    raise RuntimeError(f"DeepL HTTP {resp.status}")
+                data = await resp.json()
+                return unprotect(data["translations"][0]["text"]) if tagged else data["translations"][0]["text"]
+        finally:
+            logger.info("latency stage=mt_request elapsed_ms=%.1f", (time.monotonic() - started) * 1000)
+
+    async def synthesize(self, text: str, voice_id: Optional[str] = None) -> bytes:
+        if self._closed:
+            raise RuntimeError("translation HTTP client is closed")
+        voice = voice_id or self._cfg.elevenlabs_voice_id
+        if not self._cfg.elevenlabs_api_key or not voice:
+            raise RuntimeError("ELEVENLABS_API_KEY / voice id not set")
+        self.tts_characters += len(text)
+        if self._cfg.tts_transport == "websocket":
+            return await asyncio.wait_for(
+                _synthesize_speech(self._cfg, text, voice), self._cfg.tts_total_timeout_s)
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+        return await asyncio.wait_for(
+            self._synthesize_http(text, voice), self._cfg.tts_total_timeout_s)
+
+    async def stream_pcm(self, text, on_chunk):
+        """Forward PCM as it arrives; caller owns total deadline and ordering.
+
+        Do not retry this operation after partial delivery: that repeats speech.
+        """
+        if self._closed:
+            raise RuntimeError("translation HTTP client is closed")
+        if not self._cfg.elevenlabs_api_key or not self._cfg.elevenlabs_voice_id:
+            raise RuntimeError("ELEVENLABS_API_KEY / voice id not set")
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+        self.tts_characters += len(text)
+        total = 0
+        carry = b""
+        started = time.monotonic()
+        async with self._session.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{quote(self._cfg.elevenlabs_voice_id, safe='')}/stream",
+            params={"output_format": "pcm_24000"},
+            headers={"xi-api-key": self._cfg.elevenlabs_api_key},
+            json={"text": text, "model_id": self._cfg.elevenlabs_model_id},
+            timeout=aiohttp.ClientTimeout(total=self._cfg.tts_total_timeout_s),
+        ) as response:
+            if response.status != 200:
+                raise RuntimeError(f"ElevenLabs HTTP {response.status}")
+            async for chunk in response.content.iter_chunked(4800):
+                carry += chunk
+                size = len(carry) // 2 * 2
+                if not size:
+                    continue
+                if total == 0:
+                    logger.info("latency stage=tts_first_pcm elapsed_ms=%.1f", (time.monotonic()-started)*1000)
+                total += size
+                await on_chunk(carry[:size])
+                carry = carry[size:]
+        if not total or carry:
+            raise RuntimeError("Empty or incomplete PCM response")
+
+    async def _synthesize_http(self, text: str, voice: str) -> bytes:
+        started = time.monotonic()
+        chunks = []
+        # Text is already complete. Reuse HTTP connections across utterances
+        # instead of opening and closing a WebSocket for every segment.
+        async with self._session.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{quote(voice, safe='')}/stream",
+            params={"output_format": "mp3_44100_128"},
+            headers={"xi-api-key": self._cfg.elevenlabs_api_key},
+            json={"text": text, "model_id": self._cfg.elevenlabs_model_id,
+                  "voice_settings": {"stability": 0.5, "similarity_boost": 0.8}},
+            timeout=aiohttp.ClientTimeout(total=self._cfg.tts_total_timeout_s),
+        ) as response:
+            logger.info("latency stage=tts_headers transport=http elapsed_ms=%.1f",
+                        (time.monotonic() - started) * 1000)
+            if response.status != 200:
+                raise RuntimeError(f"ElevenLabs HTTP {response.status}")
+            async for chunk in response.content.iter_any():
+                if not chunk:
+                    continue
+                if not chunks:
+                    logger.info("latency stage=tts_first_audio transport=http model=%s elapsed_ms=%.1f",
+                                self._cfg.elevenlabs_model_id, (time.monotonic() - started) * 1000)
+                chunks.append(chunk)
+        if not chunks:
+            raise RuntimeError("No audio chunks received from ElevenLabs")
+        logger.info("latency stage=tts_complete transport=http elapsed_ms=%.1f",
+                    (time.monotonic() - started) * 1000)
+        return b"".join(chunks)
+
+    async def close(self) -> None:
+        self._closed = True
+        if self._session is not None:
+            await self._session.close()
+
+
+async def translate_text(cfg: Config, text: str, source_lang: str = "ID", target_lang: str = "EN-US") -> str:
+    """Standalone compatibility helper; live sessions use a shared client."""
+    client = TranslationHTTPClient(cfg)
+    try:
+        return await client.translate(text, source_lang, target_lang)
+    finally:
+        await client.close()
 
 
 async def synthesize_speech(cfg: Config, text: str, voice_id: Optional[str] = None) -> bytes:
@@ -90,19 +227,28 @@ async def synthesize_speech(cfg: Config, text: str, voice_id: Optional[str] = No
     voice) if not given explicitly — Question Mode passes
     cfg.elevenlabs_voice_id_question (or the same fallback) instead,
     since the question's output is Indonesian, not English."""
-    voice = voice_id or cfg.elevenlabs_voice_id
-    if not cfg.elevenlabs_api_key or not voice:
-        raise RuntimeError("ELEVENLABS_API_KEY / voice id not set")
+    client = TranslationHTTPClient(cfg)
+    try:
+        return await client.synthesize(text, voice_id)
+    finally:
+        await client.close()
 
+
+async def _synthesize_speech(cfg: Config, text: str, voice: str) -> bytes:
+    started = time.monotonic()
     import websockets as ws_lib
 
     uri = (
         f"wss://api.elevenlabs.io/v1/text-to-speech/{voice}"
-        f"/stream-input?model_id=eleven_turbo_v2_5"
+        "/stream-input?" + urlencode({"model_id": cfg.elevenlabs_model_id,
+                                      "output_format": "mp3_44100_128"})
     )
     audio_chunks: list[bytes] = []
 
     async with ws_lib.connect(uri) as ws:
+        connected = time.monotonic()
+        logger.info("latency stage=tts_connect transport=websocket elapsed_ms=%.1f",
+                    (connected - started) * 1000)
         await ws.send(json.dumps({
             "text": " ",
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.8},
@@ -114,13 +260,22 @@ async def synthesize_speech(cfg: Config, text: str, voice_id: Optional[str] = No
         while True:
             raw = await asyncio.wait_for(ws.recv(), timeout=20)
             data = json.loads(raw)
+            if data.get("error"):
+                raise RuntimeError("ElevenLabs WebSocket reported an error")
             if data.get("audio"):
+                if not audio_chunks:
+                    logger.info("latency stage=tts_after_connect elapsed_ms=%.1f",
+                                (time.monotonic() - connected) * 1000)
+                    logger.info("latency stage=tts_first_audio elapsed_ms=%.1f",
+                                (time.monotonic() - started) * 1000)
                 audio_chunks.append(base64.b64decode(data["audio"]))
             if data.get("isFinal"):
                 break
 
     if not audio_chunks:
         raise RuntimeError("No audio chunks received from ElevenLabs")
+    logger.info("latency stage=tts_complete elapsed_ms=%.1f",
+                (time.monotonic() - started) * 1000)
     return b"".join(audio_chunks)
 
 
@@ -138,14 +293,18 @@ class TranslationQueue:
         on_translated: Optional[OnTranslated] = None,
         translate_fn: Optional[TranslateFn] = None,
         synthesize_fn: Optional[SynthesizeFn] = None,
+        on_stream=None,
     ) -> None:
         self._cfg = cfg
         self._session_id = session_id
         self._on_translated = on_translated or self._default_debug_sink
-        self._translate_fn = translate_fn or (lambda text: translate_text(cfg, text))
-        self._synthesize_fn = synthesize_fn or (lambda text: synthesize_speech(cfg, text))
+        self._on_stream = on_stream
+        self._http = TranslationHTTPClient(cfg)
+        self._translate_fn = translate_fn or (lambda text: self._http.translate(text, source_lang=cfg.segmentation_language.upper()))
+        self._ready_times = {}
+        self._synthesize_fn = synthesize_fn or self._http.synthesize
 
-        self._queue: asyncio.Queue[Segment] = asyncio.Queue()
+        self._queue: asyncio.Queue[tuple[Segment, float]] = asyncio.Queue()
         self._worker_tasks: list[asyncio.Task] = []
 
         self.segments_delivered = 0
@@ -163,7 +322,11 @@ class TranslationQueue:
     async def enqueue(self, segment: Segment) -> None:
         """Wired as Segmenter's on_segment callback. Non-blocking — a
         full teacher-audio-length backlog is accepted, per Rule 6."""
-        await self._queue.put(segment)
+        now = time.monotonic()
+        self._ready_times[segment.sequence] = now
+        if self._on_stream:
+            await self._on_stream(segment.sequence, {"type": "open", "ready_at": now})
+        await self._queue.put((segment, now))
 
     async def stop(self) -> None:
         # Let already-enqueued segments finish processing rather than
@@ -186,6 +349,8 @@ class TranslationQueue:
             except asyncio.CancelledError:
                 pass
 
+        await self._http.close()
+
         logger.info(
             "Translation queue stopped for session %s (delivered=%d skipped=%d)",
             self._session_id, self.segments_delivered, self.segments_skipped,
@@ -193,10 +358,24 @@ class TranslationQueue:
 
     async def _worker_loop(self) -> None:
         while True:
-            segment = await self._queue.get()
+            segment, enqueued = await self._queue.get()
+            started = time.monotonic()
+            logger.info("latency session=%s sequence=%d stage=queue_wait elapsed_ms=%.1f depth=%d",
+                        self._session_id, segment.sequence, (started - enqueued) * 1000, self._queue.qsize())
             try:
                 await self._process_segment(segment)
+            except Exception:
+                # A downstream callback must not permanently kill a worker.
+                logger.exception("Session %s segment #%d delivery failed", self._session_id, segment.sequence)
+                if self._on_stream:
+                    try:
+                        await self._on_stream(segment.sequence, {"type": "segment_end", "sequence": segment.sequence,
+                            "audio_failed": True, "source_transcript": segment.transcript})
+                    except Exception:
+                        pass
             finally:
+                logger.info("latency session=%s sequence=%d stage=processing elapsed_ms=%.1f",
+                            self._session_id, segment.sequence, (time.monotonic() - started) * 1000)
                 self._queue.task_done()
 
     async def _process_segment(self, segment: Segment) -> None:
@@ -220,15 +399,36 @@ class TranslationQueue:
             ))
             return
 
+        deadline = time.monotonic() + self._cfg.translation_segment_timeout_s
         translated_text, mt_error = await self._attempt_with_retry(
-            lambda: self._translate_fn(segment.transcript), stage="MT",
+            lambda: self._translate_fn(segment.transcript), stage="MT", deadline=deadline,
         )
         if mt_error:
             await self._emit(self._skipped_result(segment, stage="MT", error=mt_error))
             return
 
+        if self._on_stream:
+            import base64
+            await self._on_stream(segment.sequence, {
+                "type": "segment", "sequence": segment.sequence,
+                "source_transcript": segment.transcript, "translated_text": translated_text,
+                "audio_format": "pcm_s16le", "sample_rate": 24000})
+            async def chunk(data):
+                await self._on_stream(segment.sequence, {"type": "audio_chunk", "sequence": segment.sequence,
+                    "pcm": base64.b64encode(data).decode("ascii")})
+            try:
+                await asyncio.wait_for(self._http.stream_pcm(translated_text, chunk),
+                    timeout=max(.001, min(self._cfg.tts_total_timeout_s, deadline-time.monotonic())))
+            except Exception as exc:
+                await self._emit(self._skipped_result(segment, "TTS stream", str(exc) or type(exc).__name__, translated_text))
+                return
+            self.segments_delivered += 1
+            await self._emit(TranslatedSegment(segment.session_id, segment.sequence, segment.transcript,
+                                               translated_text, None, "delivered"))
+            return
+
         audio, tts_error = await self._attempt_with_retry(
-            lambda: self._synthesize_fn(translated_text), stage="TTS",
+            lambda: self._synthesize_fn(translated_text), stage="TTS", deadline=deadline,
         )
         if tts_error:
             await self._emit(self._skipped_result(
@@ -246,18 +446,30 @@ class TranslationQueue:
             state="delivered",
         ))
 
-    async def _attempt_with_retry(self, fn: Callable[[], Awaitable], stage: str):
+    async def synthesize_question(self, text: str) -> bytes:
+        return await self._http.synthesize(text, self._cfg.elevenlabs_voice_id_question)
+
+    async def translate_question(self, text: str) -> str:
+        return await self._http.translate(text, source_lang="EN", target_lang={"zh": "ZH-HANS", "en": "EN-US"}.get(self._cfg.segmentation_language, self._cfg.segmentation_language.upper()))
+
+    async def _attempt_with_retry(self, fn: Callable[[], Awaitable], stage: str, deadline=None):
+        deadline = deadline if deadline is not None else time.monotonic() + self._cfg.translation_segment_timeout_s
         last_error: Optional[str] = None
         for attempt in range(1, self._cfg.translation_max_attempts + 1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None, "segment deadline exceeded"
+            started = time.monotonic()
             try:
-                value = await fn()
+                value = await asyncio.wait_for(fn(), timeout=remaining)
                 return value, None
-            except Exception as e:  # noqa: BLE001 -- any provider failure is handled uniformly here
-                last_error = str(e)
-                logger.warning(
-                    "Session %s: %s attempt %d/%d failed: %s",
-                    self._session_id, stage, attempt, self._cfg.translation_max_attempts, last_error,
-                )
+            except Exception as e:
+                last_error = str(e) or type(e).__name__
+                logger.warning("Session %s: %s attempt %d/%d failed: %s",
+                               self._session_id, stage, attempt, self._cfg.translation_max_attempts, last_error)
+            finally:
+                logger.info("latency session=%s stage=%s attempt=%d elapsed_ms=%.1f",
+                            self._session_id, stage, attempt, (time.monotonic() - started) * 1000)
         return None, last_error
 
     def _skipped_result(
@@ -271,12 +483,17 @@ class TranslationQueue:
             translated_text=translated_text,  # preserved if MT already succeeded before TTS failed
             audio=None,
             state="skipped",
-            error=f"{stage} failed after {self._cfg.translation_max_attempts} attempt(s): {error}",
+            error=f"{stage} failed (maximum {1 if stage == 'TTS stream' else self._cfg.translation_max_attempts} attempts): {error}",
         )
         logger.info("Session %s segment #%d skipped: %s", segment.session_id, segment.sequence, result.error)
         return result
 
     async def _emit(self, result: TranslatedSegment) -> None:
+        result = replace(result, segment_ready_at=self._ready_times.pop(result.sequence, 0.0))
+        if self._on_stream:
+            await self._on_stream(result.sequence, {"type": "segment_end", "sequence": result.sequence,
+                "state": result.state, "source_transcript": result.source_transcript,
+                "translated_text": result.translated_text, "audio_failed": bool(result.error)})
         outcome = self._on_translated(result)
         if asyncio.iscoroutine(outcome):
             await outcome
@@ -286,8 +503,12 @@ class TranslationQueue:
     # this is testable before Student Playback exists.
     # ---------------------------------------------------------------
 
-    def _default_debug_sink(self, result: TranslatedSegment) -> None:
-        write_debug_output(self._cfg, result)
+    async def _default_debug_sink(self, result: TranslatedSegment) -> None:
+        if self._cfg.debug_audio_enabled:
+            try:
+                await asyncio.to_thread(write_debug_output, self._cfg, result)
+            except Exception:
+                logger.exception("Debug output failed for segment %d", result.sequence)
 
 
 def write_debug_output(cfg: Config, result: TranslatedSegment) -> None:

@@ -1,0 +1,3 @@
+source: 'nggak siap ya kalau kayak gitu gini sih kamu jual semua aset keluarga kamu'
+translated: "I'm not ready for that—if you're going to do something like this, you'll end up selling all your family's assets."
+state: delivered

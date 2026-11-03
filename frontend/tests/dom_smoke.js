@@ -39,7 +39,7 @@ const tokensFor = (role, name) => ({ access_token: "a-" + role, refresh_token: "
 async function load(page, opts) {
   opts = opts || {};
   FakeWS.all = []; FakeAudio.all = []; FakeMic.last = null;
-  const calls = [], redirects = [], downloads = [], blobs = [], routes = opts.routes || {};
+  const calls = [], redirects = [], routes = opts.routes || {};
   let stores;
   const file = path.join(root, page);
   const dom = await JSDOM.fromFile(file, {
@@ -47,8 +47,12 @@ async function load(page, opts) {
     runScripts: "dangerously", resources: "usable", pretendToBeVisual: true,
     beforeParse(w) {
       w.WebSocket = FakeWS; w.Audio = FakeAudio;
-      w.URL.createObjectURL = (b) => { blobs.push(b); return "blob:fake"; }; w.URL.revokeObjectURL = () => {};
-      w.HTMLAnchorElement.prototype.click = function () { downloads.push(this.download); };
+      w.AudioContext = class {
+        constructor() { this.state="suspended"; this.currentTime=0; }
+        async resume() { this.state="running"; }
+        async suspend() { this.state="suspended"; }
+      };
+      w.URL.createObjectURL = () => "blob:fake"; w.URL.revokeObjectURL = () => {};
       w.HTMLElement.prototype.scrollIntoView = function () {};
       const ss = memStorage(), ls = memStorage();
       if (opts.session) ss.setItem("blb.session", opts.session);
@@ -63,7 +67,7 @@ async function load(page, opts) {
         if (!h) return { ok: false, status: 404, json: async () => ({ detail: "no route " + method + " " + p }) };
         const r = typeof h === "function" ? h(calls[calls.length - 1].body) : h;
         const status = r.status || 200;
-        return { ok: status < 400, status, json: async () => r.json, text: async () => (r.text !== undefined ? r.text : JSON.stringify(r.json)) };
+        return { ok: status < 400, status, json: async () => r.json };
       };
     },
   });
@@ -72,7 +76,7 @@ async function load(page, opts) {
   w.BLB.MicStreamer = FakeMic;
   await sleep(40);
   const frame = (seq, bytes) => { const b = new w.ArrayBuffer(4 + bytes.length); new w.DataView(b).setUint32(0, seq, false); new w.Uint8Array(b, 4).set(bytes); return b; };
-  return { w, $: (id) => w.document.getElementById(id), frame, last: () => FakeWS.all[FakeWS.all.length - 1], calls, redirects, stores, downloads, blobs };
+  return { w, $: (id) => w.document.getElementById(id), frame, last: () => FakeWS.all[FakeWS.all.length - 1], calls, redirects, stores };
 }
 const strings = (ws) => ws.sent.filter((s) => typeof s === "string");
 const binaries = (ws) => ws.sent.filter((s) => typeof s !== "string");
@@ -99,7 +103,6 @@ async function loginPage() {
   p = await load("login.html", { routes });
   p.w.document.querySelector('[data-tab="register"]').click();
   check(JSON.stringify(visible()) === '["register"]', "the 'New student' tab shows the sign-up form");
-  check(text(p.$("register")).includes("can see which lectures you attended"), "the sign-up form tells students their attendance is visible");
   p.$("rg-name").value = "Kim Student"; p.$("rg-email").value = "kim@gmail.com"; submit(p.w, "register"); await sleep(30);
   check(text(p.$("status")).includes("official university email") && JSON.stringify(visible()) === '["register"]', "a non-university email is refused with a clear message");
   p.$("rg-email").value = "kim@demo.example"; submit(p.w, "register"); await sleep(30);
@@ -142,16 +145,7 @@ async function adminPage() {
     "POST /admin/lecturers/l2/resend-invite": { status: 202, json: { message: "Invite sent." } },
     "GET /rooms": { json: [{ id: "r1", room_code: "CS-302", room_name: "Algorithms", join_code: "K7P2QX", lecturer_name: "Tara Teacher", is_live: true }] },
     "POST /rooms/r1/rotate-code": { json: { join_code: "NEWCODE" } },
-    "GET /admin/sessions?limit=25": { json: [
-      { id: "s1", status: "COMPLETED", started_at: "2026-10-01T08:00:00Z", duration_seconds: 1800, room_code: "CS-302", lecturer_name: "Tara Teacher", attendee_count: 2 },
-      { id: "s2", status: "ABORTED", started_at: "2026-09-30T08:00:00Z", duration_seconds: 60, room_code: "CS-302", lecturer_name: "Tara Teacher", attendee_count: 0 }] },
-    "GET /sessions/s1/attendance": { json: {
-      session: { id: "s1", room_code: "CS-302", lecturer_name: "Tara Teacher", status: "COMPLETED", started_at: "2026-10-01T08:00:00Z", length_seconds: 1800 },
-      attendees: [
-        { user_id: "a", full_name: "Kim Student", email: "kim@demo.example", first_joined_at: "2026-10-01T08:01:00Z", last_left_at: "2026-10-01T08:30:00Z", connections: 2, connected_seconds: 1500, connected_now: false, percent: 83 },
-        { user_id: "b", full_name: "=EVIL()", email: "evil@demo.example", first_joined_at: "2026-10-01T08:10:00Z", last_left_at: null, connections: 1, connected_seconds: 600, connected_now: true, percent: 33 }] } },
-    "GET /sessions/s1/attendance.csv": { text: "\ufeffName,Email\r\nKim Student,kim@demo.example\r\n" },
-    "GET /sessions/s2/attendance": { status: 403, json: { detail: "Only the lecturer who taught this lecture, or the school admin, can see who attended." } },
+    "GET /admin/sessions?limit=25": { json: [{ id: "s1", status: "COMPLETED", started_at: "2026-10-01T08:00:00Z", duration_seconds: 1800, room_code: "CS-302", lecturer_name: "Tara Teacher" }] },
     "GET /admin/email-domains": { json: [{ domain: "demo.example", allow_staff: true, allow_students: true }] },
   };
   const p = await load("admin.html", { session: session("ADMIN", "adm-tok", "Ada Admin"), routes });
@@ -178,23 +172,7 @@ async function adminPage() {
   Array.from(p.w.document.querySelectorAll("#rooms button")).find((b) => b.textContent === "New code").click(); await sleep(30);
   check(p.calls.some((c) => c.method === "POST" && c.path === "/rooms/r1/rotate-code"), "'New code' rotates a room's join code");
   const sess = rowsOf(p.w, "sessions");
-  check(sess.length === 2 && sess[0][0] === "CS-302" && sess[0][1] === "Tara Teacher" && sess[0][3] === "30 min" && sess[0][4] === "2" && sess[0][5] === "Completed" && sess[1][5] === "Interrupted",
-        "recent lectures show room, lecturer, length, how many students attended, and status");
-  const attButtons = () => Array.from(p.w.document.querySelectorAll("#sessions button")).filter((b) => b.textContent === "Attendance");
-  check(p.$("attendance-panel").hidden, "the attendance sheet is closed until asked for");
-  attButtons()[0].click(); await sleep(40);
-  const panel = p.$("attendance-panel");
-  check(!panel.hidden && text(panel).includes("Attendance: CS-302") && text(panel).includes("2 students joined."), "'Attendance' opens the sheet for that lecture");
-  const att = Array.from(panel.querySelectorAll("tbody tr")).map((tr) => Array.from(tr.children).map(text));
-  check(att.length === 2 && att[0][0] === "Kim Student" && att[0][3] === "25 min" && att[0][4] === "83%" && att[0][5] === "2", "each attendee shows time connected, share of the lecture and times connected");
-  check(att[1][0] === "=EVIL() (connected now)", "a name is shown as plain text, and someone still connected is marked");
-  Array.from(panel.querySelectorAll("button")).find((b) => b.textContent === "Download CSV").click(); await sleep(60);
-  check(p.calls.some((c) => c.path === "/sessions/s1/attendance.csv" && c.auth === "Bearer adm-tok"), "Download CSV fetches the sheet with the access token");
-  check(p.downloads[0] === "attendance-CS-302-2026-10-01.csv" && (await p.blobs[p.blobs.length - 1].text()).includes("kim@demo.example"), "and saves it as a sensibly named file");
-  Array.from(panel.querySelectorAll("button")).find((b) => b.textContent === "Close").click();
-  check(p.$("attendance-panel").hidden, "Close hides the sheet");
-  attButtons()[1].click(); await sleep(40);
-  check(text(p.$("attendance-panel")).includes("Only the lecturer who taught") && p.$("attendance-panel").querySelector(".status.error"), "a refusal is shown in the panel in the server's words");
+  check(sess[0][0] === "CS-302" && sess[0][3] === "30 min" && sess[0][4] === "Completed", "recent lectures show room, length and status");
   check(text(p.$("domains")) === "demo.example (staff and students)", "the school's email domains are listed (read-only)");
 
   const q = await load("admin.html", { session: session("LECTURER", "lec-tok") });
@@ -233,7 +211,14 @@ async function studentPage() {
   $("sound").checked = true;
 
   $("enable-mic").click(); await sleep(10);
-  check(!$("ask").disabled && $("enable-mic").hidden, "enabling the microphone enables the Ask button");
+  check($("ask").disabled && $("enable-mic").hidden, "microphone alone does not bypass lecturer approval");
+  ws.receive(JSON.stringify({type:"welcome",student_id:"student-a"}));
+  $("request-question").click();
+  check(strings(ws).includes('{"type":"request_question"}'), "Raise hand requests a turn");
+  ws.receive(JSON.stringify({type:"classroom",students:2,waiting:["student-a"],speaker:null}));
+  check($("request-question").disabled && text($("request-question")).includes("1"), "waiting position is shown");
+  ws.receive(JSON.stringify({type:"question_granted"}));
+  check(!$("ask").disabled, "lecturer grant enables push to talk");
   for (let i = 0; i < 5; i++) FakeMic.last.o.onFrame(new w.Int16Array(320));
   check(binaries(ws).length === 0, "nothing is sent while the button isn't held");
   $("ask").dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true }));
@@ -291,8 +276,6 @@ async function teacherPage() {
   ];
   const routes = {
     "GET /rooms": () => ({ json: roomList }),
-    "GET /sessions?limit=10": { json: [{ id: "s9", status: "COMPLETED", started_at: "2026-10-01T08:00:00Z", duration_seconds: 600, room_code: "CS-302", attendee_count: 3 }] },
-    "GET /sessions/s9/attendance": { json: { session: { id: "s9", room_code: "CS-302", status: "COMPLETED", started_at: "2026-10-01T08:00:00Z", length_seconds: 600 }, attendees: [] } },
     "POST /rooms": (b) => {
       if (b.room_code === "DUP") return { status: 409, json: { detail: "A room with that label already exists" } };
       const r = { id: "r3", room_code: b.room_code, room_name: b.room_name, join_code: "ABCDEF", mine: true, is_live: false };
@@ -306,11 +289,6 @@ async function teacherPage() {
   const opts = Array.from($("room-select").options).map((o) => o.textContent);
   check(opts.length === 2 && opts[0] === "CS-302 - Algorithms" && opts[1] === "CS-303 (live now)", "the lecturer's rooms are listed, with live ones marked");
   check($("room-select").value === "CS-302" && text($("join-code")) === "K7P2QX", "one of their own rooms is selected and its join code shown");
-  const hist = rowsOf(w, "history");
-  check(hist.length === 1 && hist[0][0] === "CS-302" && hist[0][2] === "10 min" && hist[0][3] === "3" && hist[0][4] === "Completed" && $("history-empty").hidden,
-        "the lecturer's recent lectures are listed with how many students attended");
-  Array.from(w.document.querySelectorAll("#history button")).find((b) => b.textContent === "Attendance").click(); await sleep(40);
-  check(!$("attendance-panel").hidden && text($("attendance-panel")).includes("No students joined this lecture."), "opening a lecture with no attendees says so");
   $("room-select").value = "CS-303"; $("room-select").dispatchEvent(new w.Event("change"));
   check(text($("join-code")) === "M4N8RT", "changing the room changes the join code shown");
   $("new-room-label").value = ""; $("create-room").click(); await sleep(10);
@@ -323,18 +301,22 @@ async function teacherPage() {
   $("room-select").value = "CS-302"; $("room-select").dispatchEvent(new w.Event("change"));
   $("start").click(); await sleep(60);
   const ws = p.last();
-  check(ws.url === "ws://localhost:8765/ws/teacher?room=CS-302&token=lec-tok", "starting connects with the chosen room and the lecturer's token (" + ws.url.replace(/token=.*/, "token=***") + ")");
+  check(ws.url === "ws://localhost:8765/ws/teacher?room=CS-302&token=lec-tok&source=id&configure=1", "starting connects with the chosen room and the lecturer's token (" + ws.url.replace(/token=.*/, "token=***") + ")");
   check(FakeMic.last && $("start").disabled, "the microphone starts first and Start is disabled");
   FakeMic.last.o.onFrame(new w.Int16Array(320));
-  check(ws.sent.length === 0, "no audio is sent before the server says the speech engine is ready");
+  check(binaries(ws).length === 0, "no audio is sent before the server says the speech engine is ready");
   ws.receive(JSON.stringify({ type: "mode_changed", mode: "lecture" }));
   check(!$("live-card").hidden && $("setup-card").hidden && text($("live-join-code")) === "K7P2QX", "the first server message starts the live view, with the join code for the projector");
+  check($("join-qr").querySelector("svg") !== null, "join QR code is rendered locally");
+  ws.receive(JSON.stringify({type:"classroom",students:2,waiting:["student-a"],speaker:null}));
+  $("question-queue").querySelector("button").click();
+  check(strings(ws).includes('{"type":"grant_question","student_id":"student-a"}'), "lecturer can approve a queued student");
   FakeMic.last.o.onFrame(new w.Int16Array(320)); FakeMic.last.o.onFrame(new w.Int16Array(320));
-  const seqs = () => ws.sent.map((b) => new w.DataView(b).getUint32(0, false));
+  const seqs = () => binaries(ws).map((b) => new w.DataView(b).getUint32(0, false));
   check(JSON.stringify(seqs()) === "[0,1]", "frames are sent with sequence numbers from 0");
   ws.receive(JSON.stringify({ type: "mode_changed", mode: "question" }));
   FakeMic.last.o.onFrame(new w.Int16Array(320));
-  check(!$("mode-banner").hidden && ws.sent.length === 2, "while a student asks, a banner shows and the microphone is paused");
+  check(!$("mode-banner").hidden && binaries(ws).length === 2, "while a student asks, a banner shows and the microphone is paused");
   ws.receive(JSON.stringify({ type: "mode_changed", mode: "lecture" }));
   FakeMic.last.o.onFrame(new w.Int16Array(320));
   check($("mode-banner").hidden && JSON.stringify(seqs()) === "[0,1,2]", "afterwards streaming resumes with contiguous sequence numbers");
@@ -342,7 +324,6 @@ async function teacherPage() {
   check(w.document.querySelectorAll("#questions li").length === 1 && FakeAudio.all.length === 1 && FakeAudio.all[0].played, "a student's question is logged and played");
   $("end").click(); await sleep(60);
   check(ws.closedWith === 1000 && FakeMic.last.stopped && text($("status")).includes("Lecture ended") && !$("setup-card").hidden, "End closes normally, releases the microphone and returns to setup");
-  check(p.calls.filter((c) => c.path === "/sessions?limit=10").length === 2, "the lecture list is refreshed when a lecture ends");
 
   console.log("\nlecturer page: refusals");
   const refusals = [[4403, "Monthly audio limit reached (60 of 60 minutes used)", "Monthly audio limit reached"], [4409, "This room already has a live lecture", "already has a live lecture"], [1011, "DEEPGRAM_API_KEY not set", "Server error"]];
@@ -365,7 +346,7 @@ async function teacherPage() {
   check(text(e.$("room-select")).includes("No rooms yet") && e.$("new-room-box").open, "with no rooms yet, the create-room form opens");
   const l = await load("teacher.html", { search: "?legacy=1" });
   l.$("start").click(); await sleep(60);
-  check(l.redirects.length === 0 && /^ws:\/\/localhost:8765\/ws\/teacher\?session_id=web-/.test(l.last().url) && l.$("room-block").hidden && l.$("history-card").hidden, "?legacy=1 needs no sign-in or room (and has no history) and connects in single-session mode");
+  check(l.redirects.length === 0 && /^ws:\/\/localhost:8765\/ws\/teacher\?session_id=web-/.test(l.last().url) && l.$("room-block").hidden, "?legacy=1 needs no sign-in or room and connects in single-session mode");
 }
 
 (async () => {

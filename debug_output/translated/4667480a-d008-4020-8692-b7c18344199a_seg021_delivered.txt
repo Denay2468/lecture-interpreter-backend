@@ -1,0 +1,3 @@
+source: 'Bukan masalah judul'
+translated: "It's not about the title"
+state: delivered

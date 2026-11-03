@@ -1,0 +1,3 @@
+source: 'Stress'
+translated: 'Stress'
+state: delivered

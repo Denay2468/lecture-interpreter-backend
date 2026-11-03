@@ -156,7 +156,21 @@ class DeepgramQuestionStream:
         from deepgram import AsyncDeepgramClient
         from deepgram.core.events import EventType
 
+        from .segmentation import Segmenter
+        phrase_trigger = Segmenter(cfg, "question")
+
         async def on_message(message) -> None:
+            if getattr(message, "type", None) == "Results":
+                if bool(getattr(message, "is_final", False)):
+                    phrase_trigger._previous_draft = []
+                    phrase_trigger._finalize_pending = False
+                else:
+                    try:
+                        draft = message.channel.alternatives[0].transcript
+                    except (AttributeError, IndexError):
+                        draft = ""
+                    phrase_trigger._dg_connection = self._conn
+                    await phrase_trigger._maybe_finalize_phrase(draft)
             msg_type = getattr(message, "type", None)
             if msg_type == "Results" and bool(getattr(message, "is_final", False)):
                 try:

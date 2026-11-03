@@ -213,3 +213,39 @@ One admin per school, who invites lecturers; students self-register. Everyone mu
 
 `protocol.py` defines two placeholder framings: one for teacher→server audio (sequence + timestamp + PCM, used by the Jitter Buffer for reordering) and a simpler one for server→student audio (sequence + complete synthesized clip, since each translated segment is already a self-contained playable unit, not a continuous stream needing frame-level pacing). Neither has been validated against a real browser/mobile client yet — when you build the actual teacher- and student-facing clients, you'll need to implement this same framing there, or revisit the protocol together with that work.
 
+
+## Classroom streaming and Indonesian colloquial speech
+
+The `Hugo-commit` classroom implementation supports multiple students per room,
+five lecturer languages, moderated questions, an editable course glossary,
+Indonesian slang normalization, and progressive PCM playback.
+See [setup, limitations and acceptance tests](docs/classroom-streaming.md).
+
+### Short-phrase streaming
+
+With `INCREMENTAL_PHRASES_ENABLED=true`, repeated interim hypotheses with a
+stable prefix of `PHRASE_TARGET_WORDS=4` words trigger Deepgram Finalize without
+closing the connection. Only provider-final text is translated and spoken;
+interim drafts are never appended to captions/audio. Final text reaching the target size is emitted
+even when speech_final is false; shorter tails wait for an endpoint. Common trailing connectors and
+negations defer the request. Requests are throttled (700 ms minimum, 2 seconds
+when awaiting a final); failed requests fall back to normal endpointing.
+
+This targets earlier playback while speech continues, not a guaranteed 2–5-word
+lag. Provider cadence, buffered audio, translation context and audio backlog can
+increase lag. Very short phrases can reduce translation quality. Test continuous
+speech and negations, and compare `stable_phrase` logs against `speech_final`.
+Set `INCREMENTAL_PHRASES_ENABLED=false` to restore endpoint-based behavior.
+Playback ACK timing still excludes speech recognition / phrase accumulation.
+
+### Live student questions
+
+With incremental phrases enabled, student final STT chunks are translated and
+synthesized serially while Ask is held. The teacher receives complete MP3 phrases
+through the existing player (not PCM chunk streaming). Early Finalize also applies
+to English question drafts. Release drains remaining phrases; disconnect cancels
+pending work. Failures are reported at completion and never replay the entire
+question after partial playback. Already heard audio cannot be retracted.
+Short-phrase translation and playback backlog require live quality/latency tests;
+2–5-word lag is a target, not a guarantee. Disable incremental phrases to restore
+the original release-based question pipeline with its batch STT fallback.

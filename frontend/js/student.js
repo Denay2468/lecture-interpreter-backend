@@ -10,6 +10,25 @@
     ask: $("ask"), askHint: $("ask-hint"), level: $("level"), whoami: $("whoami"), signout: $("signout"),
   };
   el.serverUrl.value = BLB.defaultServerUrl();
+  const joinParams = new URLSearchParams(location.search);
+  try {
+    const incoming = joinParams.get("code");
+    if (incoming) sessionStorage.setItem("blb.joinCode", incoming);
+    el.code.value = incoming || sessionStorage.getItem("blb.joinCode") || "";
+    const port = Number(joinParams.get("wport"));
+    if (Number.isInteger(port) && port > 0 && port <= 65535) {
+      const server = new URL(el.serverUrl.value); server.port = port;
+      el.serverUrl.value = server.href.replace(/\/$/, ""); BLB.saveServerUrl(el.serverUrl.value);
+    }
+  } catch (_) {}
+  let studentId = null, granted = false;
+  const requestButton = $("request-question");
+  requestButton.addEventListener("click", () => send(JSON.stringify({type: "request_question"})));
+  const pcm = new BLB.PCMPlayer({
+    onStart: (m) => send(JSON.stringify({type: "playback_started", sequence: m.sequence})),
+    onBlocked: () => { el.soundBanner.hidden = false; },
+    onBacklog: () => { setStatus("Audio fell behind. Reconnecting to live audio.", "busy"); if (ws) ws.close(1013); }
+  });
 
   // Students sign in with their university email. (student.html?legacy=1 skips this for a server running without a database.)
   if (new URLSearchParams(location.search).get("legacy") === "1") {
@@ -26,7 +45,7 @@
   const captionEls = new Map();
 
   const queue = new BLB.AudioQueue({
-    onStart: (m) => { const c = captionEls.get(m.sequence); if (c) c.classList.add("playing"); },
+    onStart: (m) => { send(JSON.stringify({type: "playback_started", sequence: m.sequence})); const c = captionEls.get(m.sequence); if (c) c.classList.add("playing"); },
     onEnd: (m) => { const c = captionEls.get(m.sequence); if (c) c.classList.remove("playing"); },
     onBlocked: () => { el.soundBanner.hidden = false; },
   });
@@ -93,6 +112,8 @@
 
   function handleClosed(ev) {
     ask.reset();
+    if (ev.code !== 4413) { pcm.clear(); queue.clear(); }
+    granted = false;
     setAskUi(false);
     ws = null;
     const info = BLB.explainClose("student", ev.code, ev.reason);
@@ -124,6 +145,22 @@
     let msg;
     try { msg = JSON.parse(data); } catch (e) { return; }
     switch (msg.type) {
+      case "welcome": studentId = msg.student_id; break;
+      case "question_granted":
+        granted = true; el.ask.disabled = !mic;
+        el.askHint.textContent = "Your turn. Hold to speak (up to 45 seconds)."; break;
+      case "question_expired": granted = false; ask.reset(); setAskUi(false); el.ask.disabled = true; break;
+      case "classroom":
+        if (msg.speaker !== studentId) { granted = false; el.ask.disabled = true; }
+        requestButton.disabled = msg.speaker === studentId || msg.waiting.includes(studentId);
+        requestButton.textContent = msg.waiting.includes(studentId) ? "Waiting: " + (msg.waiting.indexOf(studentId)+1) : "Raise hand";
+        break;
+      case "audio_chunk":
+        if (el.sound.checked) pcm.push(msg.pcm, msg.sequence); break;
+      case "segment_end":
+        if (msg.source_transcript && !captionEls.has(msg.sequence)) addCaption(msg);
+        if (msg.audio_failed && captionEls.has(msg.sequence)) captionEls.get(msg.sequence).appendChild(paragraph("muted small", "Audio unavailable or interrupted; text is retained."));
+        break;
       case "mode_changed": onMode(msg.mode); break;
       case "segment": addCaption(msg); break;
       case "question_delivered": addQuestionResult(msg); break;
@@ -138,7 +175,9 @@
       showLive(true);
       setStatus("Connected. Translations will appear as the lecturer speaks.", "ok");
     }
-    if (mode === "question") { setPill("Asking", "warn"); el.modeText.textContent = "Your question is being sent to the lecturer..."; }
+    if (mode === "question") pcm.pause();
+    else if (pcm.context) pcm.resume().catch(() => { el.soundBanner.hidden = false; });
+    if (mode === "question") { setPill("Asking", "warn"); el.modeText.textContent = "A student is asking a question..."; }
     else { setPill("Live", "ok"); el.modeText.textContent = "Listening to the lecture"; }
   }
 
@@ -156,7 +195,7 @@
     card.className = "qa-card";
     card.appendChild(paragraph("muted small", "Your question"));
     card.appendChild(paragraph("caption-text", msg.source_transcript || ""));
-    card.appendChild(paragraph("caption-source", "Told to the lecturer in Indonesian: " + (msg.translated_text || "")));
+    card.appendChild(paragraph("caption-source", "Translated for the lecturer: " + (msg.translated_text || "")));
     appendCard(card);
   }
 
@@ -185,8 +224,8 @@
       await m.start();
       mic = m;
       el.enableMic.hidden = true;
-      el.ask.disabled = false;
-      el.askHint.textContent = "Hold the button while you speak, then let go.";
+      el.ask.disabled = !granted;
+      el.askHint.textContent = granted ? "Hold the button while you speak." : "Raise your hand and wait for the lecturer.";
     } catch (e) {
       el.enableMic.disabled = false;
       el.micNote.textContent = "Microphone unavailable: " + (e && e.message ? e.message : e);
@@ -195,7 +234,7 @@
 
   function setAskUi(on) { el.ask.classList.toggle("active", on); el.ask.textContent = on ? "Release to send" : "Hold to ask"; }
   function pressAsk(e) {
-    if (el.ask.disabled) return;
+    if (el.ask.disabled || !granted) return;
     if (e) {
       if (e.preventDefault) e.preventDefault();
       if (e.pointerId !== undefined && el.ask.setPointerCapture) { try { el.ask.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } }
@@ -219,6 +258,7 @@
       el.code.focus();
       return;
     }
+    pcm.resume().catch(() => { el.soundBanner.hidden = false; });
     BLB.saveServerUrl(el.serverUrl.value.trim());
     el.code.value = code;
     userLeft = false;
@@ -234,10 +274,11 @@
     userLeft = true;
     clearRetry();
     queue.clear();
+    pcm.clear();
     if (ws) ws.close(1000, "left"); else finishSession("You left the room.", "");
   });
 
-  el.sound.addEventListener("change", () => { if (!el.sound.checked) queue.clear(); });
-  el.enableSound.addEventListener("click", () => { el.soundBanner.hidden = true; queue.resume(); });
+  el.sound.addEventListener("change", () => { if (!el.sound.checked) { queue.clear(); pcm.clear(); } });
+  el.enableSound.addEventListener("click", () => { el.soundBanner.hidden = true; queue.resume(); pcm.resume().catch(() => { el.soundBanner.hidden = false; }); });
   window.addEventListener("beforeunload", () => { if (ws) ws.close(1000); });
 })();

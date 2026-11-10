@@ -49,15 +49,17 @@ class Classroom:
 
     async def announce(self):
         data = {"type": "classroom", "students": len(self.students),
-                "waiting": list(self.waiting), "speaker": self.owner}
+                "waiting": list(self.waiting), "speaker": self.owner,
+                "names": {sid: self.students[sid].get("name") for sid in self.waiting if sid in self.students}}
         await self.control(data)
         if self.teacher_send:
             await self.teacher_send(data)
 
-    async def join(self, websocket):
+    async def join(self, websocket, name=None):
         student = uuid.uuid4().hex[:12]
         self.students[student] = {"ws": websocket, "queue": asyncio.Queue(maxsize=32),
-                                  "overflow": asyncio.Event(), "sent": {}}
+                                  "overflow": asyncio.Event(), "sent": {},
+                                  "name": (name or "").strip()[:60] or None}
         self.start()
         self.put(student, {"type": "welcome", "student_id": student})
         self.put(student, {"type": "mode_changed", "mode": self.coord.current_mode})

@@ -2,69 +2,62 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BLB - Lecturer</title>
+  <title>Brelanbar - Lecturer</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="topbar"><a class="brand" href="index.html">BLB <span>Break Language Barrier</span></a>
+  <header class="topbar"><a class="brand" href="index.html"><i class="logo" aria-hidden="true"></i>Brelanbar</a>
     <span class="role"><span id="whoami"></span> <button id="signout" class="ghost small" hidden>Sign out</button></span></header>
-  <main class="container">
-    <section class="card" id="setup-card">
+  <main class="container mid" id="main">
+    <div id="setup-card">
       <h1>Start a lecture</h1>
-      <p class="lead">Your microphone streams to the interpreter while the lecture is live. Students hear the English version a couple of seconds behind you.</p>
-      <div id="room-block">
-        <label for="room-select">Room</label>
-        <select id="room-select"></select>
-        <p id="join-line" class="muted" hidden>Students join with the code <span id="join-code" class="join-code"></span></p>
-        <details class="advanced" id="new-room-box">
-          <summary>Create a new room</summary>
-          <label for="new-room-label">Room label</label>
-          <input id="new-room-label" type="text" autocomplete="off" placeholder="e.g. CS-302">
-          <label for="new-room-name">Name (optional)</label>
-          <input id="new-room-name" type="text" autocomplete="off" placeholder="e.g. Algorithms">
-          <div class="row"><button id="create-room" class="secondary" type="button">Create room</button></div>
-        </details>
-      </div>
-      <label for="source-language">Language spoken by the lecturer</label>
-      <select id="source-language"><option value="id">Indonesian</option><option value="en">English</option><option value="zh">Mandarin Chinese</option><option value="ja">Japanese</option><option value="es">Spanish</option></select>
-      <label for="course-glossary">Course glossary (optional, source term = English term)</label>
-      <textarea id="course-glossary" rows="4" maxlength="8000" placeholder="jaringan komputer = computer network&#10;tektokan = back-and-forth conversation"></textarea>
-      <p class="muted small">Up to 40 terms. Exact phrases are protected during translation. Indonesian slang normalization is enabled by default.</p>
-      <div class="row"><button id="start" class="primary">Start lecture</button></div>
-      <p id="status" class="status" role="status" aria-live="polite"></p>
-      <details class="advanced">
-        <summary>Advanced</summary>
-        <label for="server-url">Server address</label>
-        <input id="server-url" type="text" autocomplete="off" spellcheck="false">
-        <label class="check"><input type="checkbox" id="legacy"> Single-session mode (open this page as teacher.html?legacy=1 for a server running without a database)</label>
-      </details>
-    </section>
+      <section class="card" id="room-block"><h2>1. Room</h2>
+        <label for="room-select">Room</label><select id="room-select"></select>
+        <div style="display:none"><p id="join-line" hidden><span id="join-code"></span></p></div>
+        <details id="new-room-box"><summary>Create a new room</summary>
+          <label for="new-room-label" style="margin-top:12px">Room label</label><input id="new-room-label" type="text" autocomplete="off" placeholder="e.g. CS-302">
+          <label for="new-room-name">Name (optional)</label><input id="new-room-name" type="text" autocomplete="off" placeholder="e.g. Algorithms">
+          <button id="create-room" class="secondary" type="button">Create room</button></details>
+      </section>
+      <section class="card"><h2>2. Language you speak</h2>
+        <select id="source-language" aria-label="Language spoken by the lecturer" style="margin:0"><option value="id">Indonesian</option><option value="en">English</option><option value="zh">Mandarin Chinese</option><option value="ja">Japanese</option><option value="es">Spanish</option></select></section>
+      <details class="card"><summary>Course glossary (optional)</summary>
+        <label for="course-glossary" style="margin-top:12px">One term per line: source term = English term</label>
+        <textarea id="course-glossary" rows="4" maxlength="8000" placeholder="jaringan komputer = computer network&#10;tektokan = back-and-forth conversation"></textarea>
+        <p class="muted small" style="margin:0">Up to 40 terms. Exact phrases are protected during translation.</p></details>
+      <button id="start" class="primary big">Start lecture</button>
+      <p id="status" class="status" role="status" aria-live="polite" style="text-align:center"></p>
+      <details class="advanced"><summary>Advanced</summary>
+        <label for="server-url" style="margin-top:12px">Server address</label><input id="server-url" type="text" autocomplete="off" spellcheck="false">
+        <label class="check"><input type="checkbox" id="legacy"> Single-session mode (teacher.html?legacy=1, server without a database)</label></details>
+      <section class="card" id="history-card" style="margin-top:22px"><h2>Recent lectures</h2>
+        <p id="history-empty" class="empty" hidden>No lectures yet.</p>
+        <div class="tw"><table id="history"><thead><tr><th>Room</th><th>Started</th><th>Length</th><th>Students</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div id="attendance-panel" class="attendance" hidden></div></section>
+    </div>
 
-    <section class="card" id="live-card" hidden>
-      <div class="live-head">
-        <span><span id="state-pill" class="pill ok">Live</span></span>
-        <span id="timer" class="timer">00:00</span>
-        <button id="end" class="danger">End lecture</button>
-      </div>
-      <p id="live-join-line" class="muted" hidden>Students join with the code <span id="live-join-code" class="join-code"></span></p>
-      <p><a id="join-link" target="_blank" rel="noopener">Open student join link</a></p>
-      <div id="join-qr" aria-label="Student join QR code"></div>
-      <p id="classroom-count" role="status"></p>
-      <h2>Raised hands</h2><div id="question-queue"></div>
-      <details><summary>Session measurements</summary><p id="session-metrics" role="status">Waiting for completed segments and playback reports.</p>
-      <p class="muted small">Latency starts when STT finalizes a phrase and ends when the server receives the browser playback report. It excludes capture/STT delay and includes report network time; it is not full speech-to-speech latency.</p>
-      </details>
-      <div id="mode-banner" class="banner warn" hidden>A student is asking a question. Your microphone is paused until they finish.</div>
-      <p class="muted small" style="margin-top:14px">Microphone level</p>
-      <div class="meter" aria-hidden="true"><div id="level"></div></div>
-      <h2 style="margin-top:20px">Student questions</h2>
-      <p id="questions-empty" class="muted small">Approve a raised hand. Questions are translated into your selected language.</p>
-      <ul id="questions" class="log"></ul>
-      <p id="note" class="muted small"></p>
-    </section>
+    <div id="live-card" hidden>
+      <div class="livebar"><span id="state-pill" class="pill ok">Live</span><span id="timer" class="timer">00:00</span><p id="classroom-count" role="status"></p><span class="sp"></span><button id="end" class="danger small">End lecture</button></div>
+      <div class="cols">
+        <section class="card"><h2>Student questions</h2>
+          <div id="mode-banner" class="banner warn" hidden>A student is asking a question. Your microphone is paused until they finish.</div>
+          <p id="questions-empty" class="empty">When a student asks, the question appears here, translated into your language.</p>
+          <ul id="questions" class="log"></ul><p id="note" class="muted small"></p></section>
+        <div>
+          <section class="card"><h2>Raised hands</h2><div id="question-queue"></div></section>
+          <section class="card"><h2>Microphone</h2><div class="meter" aria-label="Microphone level"><div id="level"></div></div></section>
+          <section class="card"><h2>Join</h2>
+            <div class="joinbox"><div id="join-qr" aria-label="Student join QR code"></div>
+              <div><p id="live-join-line" class="muted small" style="margin:0" hidden>Room code <span id="live-join-code" class="join-code"></span></p>
+              <a id="join-link" target="_blank" rel="noopener" class="small">Open student join link</a></div></div></section>
+          <div style="display:none"><p id="session-metrics"></p></div>
+        </div></div>
+    </div>
   </main>
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/attendance.js"></script>
   <script src="vendor/qrcode.js"></script>
   <script src="js/teacher.js"></script>
 </body>

@@ -18,7 +18,7 @@
     if (first && first.focus) first.focus();
   }
   document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => showPanel(b.dataset.tab)));
-  if (location.hash === "#register") showPanel("register");
+  if (location.hash === "#register" || location.hash === "#signup") showPanel("register");
 
   // run one action with the submit button disabled and errors shown
   async function run(form, busyText, action) {

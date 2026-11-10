@@ -167,7 +167,8 @@
       $("question-queue").replaceChildren();
       msg.waiting.forEach((id, index) => {
         const button = document.createElement("button");
-        button.textContent = "Allow student " + (index+1) + " (" + id.slice(-4) + ")";
+        const who = msg.names && msg.names[id];
+        button.textContent = "Allow " + (who || "student " + (index+1) + " (" + id.slice(-4) + ")");
         button.disabled = !!msg.speaker;
         button.onclick = () => ws.send(JSON.stringify({type:"grant_question", student_id:id}));
         $("question-queue").appendChild(button);

@@ -267,15 +267,17 @@ class Server:
     # ---------------------------------------------------------------- student
 
     async def _handle_student(self, websocket: WebSocketServerProtocol, params: dict) -> None:
+        name = None
         if self._db is None:
             active = self._active[LEGACY_KEY]
         else:
-            active = await self._resolve_student_session(websocket, params)
-            if active is None:
+            resolved = await self._resolve_student_session(websocket, params)
+            if resolved is None:
                 return
-        await self._serve_student(websocket, active)
+            active, name = resolved
+        await self._serve_student(websocket, active, name)
 
-    async def _resolve_student_session(self, websocket: WebSocketServerProtocol, params: dict) -> Optional[ActiveSession]:
+    async def _resolve_student_session(self, websocket: WebSocketServerProtocol, params: dict) -> Optional[tuple]:
         # Who you are is settled before anything about the room is revealed.
         try:
             claims = verify_access_token(params.get("token", [""])[0], self._cfg.jwt_secret)
@@ -309,13 +311,13 @@ class Server:
             # LIVE in the database but not held by this process (e.g. another instance).
             await self._reject(websocket, CLOSE_NOT_LIVE, "This lecture is not available on this server")
             return None
-        return active
+        return active, user.full_name
 
-    async def _serve_student(self, websocket: WebSocketServerProtocol, active: ActiveSession) -> None:
+    async def _serve_student(self, websocket: WebSocketServerProtocol, active: ActiveSession, name: Optional[str] = None) -> None:
         if active.classroom is None:
             active.classroom = Classroom(active.coordinator)
         hub = active.classroom
-        student = await hub.join(websocket)
+        student = await hub.join(websocket, name)
         async def receive():
             async for message in websocket:
                 await hub.receive(student, message)

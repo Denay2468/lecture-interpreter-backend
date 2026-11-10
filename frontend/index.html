@@ -2,22 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BLB - Break Language Barrier</title>
+  <title>Brelanbar</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="topbar"><span class="brand">BLB <span>Break Language Barrier</span></span></header>
-  <main class="container">
-    <section class="card">
-      <h1>Live lecture interpreter</h1>
-      <p class="lead">Indonesian lectures, heard in English as they happen. Choose your role.</p>
-    </section>
-    <div class="choices">
-      <a href="student.html"><section class="card"><h2>I'm a student</h2><p class="muted">Join with a room code, hear and read the lecture in English, and ask questions.</p></section></a>
-      <a href="teacher.html"><section class="card"><h2>I'm a lecturer</h2><p class="muted">Start a lecture in your room and speak normally.</p></section></a>
-    </div>
-    <p><a href="login.html">Sign in, or create a student account</a> with your university email.</p>
-    <p class="muted small">The backend must be running (default <code>ws://localhost:8765</code>). You can change the address under "Advanced" on either page.</p>
+  <main class="welcome">
+    <div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i><i class="dots"></i></div>
+    <div class="mark"><span class="ring"></span><span class="ring r2"></span><i class="logo" role="img" aria-label="Brelanbar logo"></i></div>
+    <h1 aria-label="Brelanbar"><span style="--i:0">B</span><span style="--i:1">r</span><span style="--i:2">e</span><span style="--i:3">l</span><span style="--i:4">a</span><span style="--i:5">n</span><span style="--i:6">b</span><span style="--i:7">a</span><span style="--i:8">r</span></h1>
+    <div class="acts"><a class="primary" href="login.html">Sign in</a><a class="secondary" href="login.html#signup">Sign up</a></div>
   </main>
+  <script>document.querySelectorAll(".acts a").forEach(function(a){a.addEventListener("click",function(e){if(e.metaKey||e.ctrlKey)return;e.preventDefault();document.querySelector(".welcome").classList.add("leaving");setTimeout(function(){location.href=a.href},260)})})window.addEventListener("pageshow",function(){document.querySelector(".welcome").classList.remove("leaving")})</script>
 </body>
 </html>

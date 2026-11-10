@@ -2,31 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BLB - Sign in</title>
+  <title>Brelanbar - Sign in</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="topbar"><a class="brand" href="index.html">BLB <span>Break Language Barrier</span></a><span class="role">Sign in</span></header>
-  <main class="container">
+  <main class="welcome auth">
+    <div class="bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i><i class="dots"></i></div>
+    <a class="home" href="index.html" aria-label="Brelanbar home"><span class="mark"><i class="logo" aria-hidden="true"></i></span><span class="word">Brelanbar</span></a>
     <section class="card">
-      <h1>Welcome</h1>
-      <p class="lead">Use your official university email. School admins, lecturers and students all sign in here.</p>
-      <div class="tabs" role="tablist">
-        <button type="button" role="tab" data-tab="signin" aria-selected="true">Sign in</button>
-        <button type="button" role="tab" data-tab="register" aria-selected="false">New student</button>
-        <button type="button" role="tab" data-tab="activate" aria-selected="false">I have a code</button>
-        <button type="button" role="tab" data-tab="reset" aria-selected="false">Forgot password</button>
-      </div>
-
+      <h1>Welcome back</h1>
       <form id="signin" data-panel="signin" novalidate>
         <label for="si-email">University email</label>
         <input id="si-email" type="email" autocomplete="username" spellcheck="false">
         <label for="si-password">Password</label>
         <input id="si-password" type="password" autocomplete="current-password">
-        <div class="row"><button class="primary" type="submit">Sign in</button></div>
+        <div class="row"><button class="primary big" type="submit">Sign in</button></div>
+        <div class="row split"><button type="button" class="link" data-tab="register">Sign up</button><button type="button" class="link" data-tab="reset">Forgot password?</button></div>
       </form>
 
       <form id="register" data-panel="register" hidden novalidate>
+        <h2>Create a student account</h2>
         <p class="muted small">Students create an account with their university email. We'll email you a code to prove it's yours.</p>
         <label for="rg-name">Your name</label>
         <input id="rg-name" type="text" autocomplete="name">
@@ -34,9 +30,11 @@
         <input id="rg-email" type="email" autocomplete="email" spellcheck="false">
         <p class="muted small">Your lecturer and your school's admin can see which lectures you attended.</p>
         <div class="row"><button class="primary" type="submit">Email me a code</button></div>
+        <div class="row"><button type="button" class="link" data-tab="signin">&larr; Back to sign in</button></div>
       </form>
 
       <form id="activate" data-panel="activate" hidden novalidate>
+        <h2>Enter your code</h2>
         <p class="muted small">Lecturers: use the code from the invitation your school admin sent. Students: use the code we just emailed you. Then choose a password (at least 10 characters).</p>
         <label for="ac-email">University email</label>
         <input id="ac-email" type="email" autocomplete="username" spellcheck="false">
@@ -45,9 +43,11 @@
         <label for="ac-password">Choose a password</label>
         <input id="ac-password" type="password" autocomplete="new-password">
         <div class="row"><button class="primary" type="submit">Create my account</button></div>
+        <div class="row"><button type="button" class="link" data-tab="signin">&larr; Back to sign in</button></div>
       </form>
 
       <form id="reset" data-panel="reset" hidden novalidate>
+        <h2>Reset your password</h2>
         <label for="rs-email">University email</label>
         <input id="rs-email" type="email" autocomplete="username" spellcheck="false">
         <div id="reset-step2" hidden>
@@ -57,18 +57,16 @@
           <input id="rs-password" type="password" autocomplete="new-password">
         </div>
         <div class="row"><button class="primary" type="submit" id="rs-submit">Email me a reset code</button></div>
+        <div class="row"><button type="button" class="link" data-tab="signin">&larr; Back to sign in</button></div>
       </form>
 
       <p id="status" class="status" role="status" aria-live="polite"></p>
-      <details class="advanced">
-        <summary>Advanced</summary>
-        <label for="api-url">API address</label>
-        <input id="api-url" type="text" autocomplete="off" spellcheck="false">
-      </details>
+      <input id="api-url" type="hidden">
     </section>
   </main>
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
   <script src="js/login.js"></script>
+  <script>window.addEventListener("load",function(){setTimeout(function(){scrollTo(0,0)},0)})</script>
 </body>
 </html>

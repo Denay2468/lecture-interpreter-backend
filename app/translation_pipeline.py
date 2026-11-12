@@ -38,7 +38,7 @@ import aiohttp
 
 from .config import Config
 from .segmentation import Segment
-from .glossary import protect, unprotect
+from .glossary import protect, unprotect, directional_pairs
 from .slang import normalize_indonesian
 from dataclasses import replace
 
@@ -92,7 +92,8 @@ class TranslationHTTPClient:
             raise RuntimeError("DEEPL_API_KEY not set")
         if self._session is None:
             self._session = aiohttp.ClientSession()
-        pairs = self._cfg.course_glossary if target_lang.startswith("EN") else ()
+        pairs = directional_pairs(self._cfg.course_glossary, source_lang, target_lang,
+                                  self._cfg.segmentation_language)
         protected, tagged = protect(text, pairs)
         # Custom terms take precedence over normalization. Normalize only outside
         # protected XML elements so an English target such as "go" is untouched.
@@ -107,6 +108,8 @@ class TranslationHTTPClient:
             else:
                 protected = normalize_indonesian(protected)
         payload = {"text": protected, "source_lang": source_lang, "target_lang": target_lang}
+        if self._cfg.course_context:
+            payload["context"] = self._cfg.course_context
         if tagged:
             payload.update(tag_handling="xml", ignore_tags="blbterm")
         self.mt_characters += len(text)

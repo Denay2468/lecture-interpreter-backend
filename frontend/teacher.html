@@ -22,10 +22,16 @@
       </section>
       <section class="card"><h2>2. Language you speak</h2>
         <select id="source-language" aria-label="Language spoken by the lecturer" style="margin:0"><option value="id">Indonesian</option><option value="en">English</option><option value="zh">Mandarin Chinese</option><option value="ja">Japanese</option><option value="es">Spanish</option></select></section>
-      <details class="card"><summary>Course glossary (optional)</summary>
+      <section class="card"><h2>3. IT course terminology</h2>
+        <label for="course-profile">Course preset (Indonesian to English)</label>
+        <select id="course-profile" disabled><option value="">Custom glossary only</option></select>
+        <p id="course-profile-note" class="muted small" role="status">Loading IT course presets...</p>
+        <details><summary>Review preset terminology</summary><pre id="course-preview" style="white-space:pre-wrap"></pre></details>
+      </section>
+      <details class="card"><summary>Additional terms / overrides</summary>
         <label for="course-glossary" style="margin-top:12px">One term per line: source term = English term</label>
         <textarea id="course-glossary" rows="4" maxlength="8000" placeholder="jaringan komputer = computer network&#10;tektokan = back-and-forth conversation"></textarea>
-        <p class="muted small" style="margin:0">Up to 40 terms. Exact phrases are protected during translation.</p></details>
+        <p class="muted small" style="margin:0">Up to 40 total terms including the preset. Add an entry to override its translation. Choose Custom glossary only to replace all preset terms. Terms also apply to unambiguous reverse questions.</p></details>
       <button id="start" class="primary big">Start lecture</button>
       <p id="status" class="status" role="status" aria-live="polite" style="text-align:center"></p>
       <details class="advanced"><summary>Advanced</summary>
@@ -59,6 +65,7 @@
   <script src="js/api.js"></script>
   <script src="js/attendance.js"></script>
   <script src="vendor/qrcode.js"></script>
+  <script src="js/course-profiles.js"></script>
   <script src="js/teacher.js"></script>
 </body>
 </html>

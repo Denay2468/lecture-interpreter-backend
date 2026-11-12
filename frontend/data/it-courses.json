@@ -1,0 +1,625 @@
+{
+  "version": 1,
+  "source_language": "id",
+  "target_language": "en",
+  "courses": [
+    {
+      "id": "networks",
+      "label": "Jaringan Komputer / Computer Networks",
+      "context": "Jaringan komputer: perutean, alamat IP, subnet, protokol, dan pengiriman paket.",
+      "terms": [
+        [
+          "jaringan komputer",
+          "computer network"
+        ],
+        [
+          "jaringan",
+          "network"
+        ],
+        [
+          "perutean",
+          "routing"
+        ],
+        [
+          "alamat IP",
+          "IP address"
+        ],
+        [
+          "alamat MAC",
+          "MAC address"
+        ],
+        [
+          "subnet mask",
+          "subnet mask"
+        ],
+        [
+          "pintu gerbang baku",
+          "default gateway"
+        ],
+        [
+          "kehilangan paket",
+          "packet loss"
+        ],
+        [
+          "lebar pita",
+          "bandwidth"
+        ],
+        [
+          "latensi",
+          "latency"
+        ],
+        [
+          "lapisan jaringan",
+          "network layer"
+        ],
+        [
+          "lapisan transport",
+          "transport layer"
+        ],
+        [
+          "lapisan tautan data",
+          "data link layer"
+        ],
+        [
+          "tabel perutean",
+          "routing table"
+        ],
+        [
+          "pengalih",
+          "switch"
+        ],
+        [
+          "perute",
+          "router"
+        ],
+        [
+          "paket data",
+          "data packet"
+        ],
+        [
+          "protokol kendali transmisi",
+          "Transmission Control Protocol"
+        ],
+        [
+          "jabat tangan tiga arah",
+          "three-way handshake"
+        ],
+        [
+          "penyeimbangan beban",
+          "load balancing"
+        ],
+        [
+          "kemacetan jaringan",
+          "network congestion"
+        ],
+        [
+          "resolusi nama",
+          "name resolution"
+        ],
+        [
+          "pengalamatan",
+          "addressing"
+        ],
+        [
+          "throughput",
+          "throughput"
+        ]
+      ]
+    },
+    {
+      "id": "programming",
+      "label": "Pemrograman / Programming",
+      "context": "Pemrograman: variabel, fungsi, tipe data, algoritma, dan pemrograman berorientasi objek.",
+      "terms": [
+        [
+          "variabel",
+          "variable"
+        ],
+        [
+          "fungsi",
+          "function"
+        ],
+        [
+          "perulangan",
+          "loop"
+        ],
+        [
+          "percabangan",
+          "branching"
+        ],
+        [
+          "larik",
+          "array"
+        ],
+        [
+          "tipe data",
+          "data type"
+        ],
+        [
+          "nilai balik",
+          "return value"
+        ],
+        [
+          "parameter",
+          "parameter"
+        ],
+        [
+          "argumen",
+          "argument"
+        ],
+        [
+          "pewarisan",
+          "inheritance"
+        ],
+        [
+          "enkapsulasi",
+          "encapsulation"
+        ],
+        [
+          "polimorfisme",
+          "polymorphism"
+        ],
+        [
+          "kelas",
+          "class"
+        ],
+        [
+          "objek",
+          "object"
+        ],
+        [
+          "penanganan pengecualian",
+          "exception handling"
+        ],
+        [
+          "rekursi",
+          "recursion"
+        ],
+        [
+          "ruang lingkup",
+          "scope"
+        ],
+        [
+          "penunjuk",
+          "pointer"
+        ],
+        [
+          "struktur data",
+          "data structure"
+        ],
+        [
+          "kompleksitas waktu",
+          "time complexity"
+        ],
+        [
+          "kompleksitas ruang",
+          "space complexity"
+        ],
+        [
+          "antrian",
+          "queue"
+        ],
+        [
+          "tumpukan",
+          "stack"
+        ],
+        [
+          "daftar tertaut",
+          "linked list"
+        ]
+      ]
+    },
+    {
+      "id": "databases",
+      "label": "Basis Data / Databases",
+      "context": "Basis data relasional: SQL, tabel, transaksi, indeks, dan normalisasi.",
+      "terms": [
+        [
+          "basis data",
+          "database"
+        ],
+        [
+          "pangkalan data",
+          "database"
+        ],
+        [
+          "tabel",
+          "table"
+        ],
+        [
+          "baris",
+          "row"
+        ],
+        [
+          "kolom",
+          "column"
+        ],
+        [
+          "kunci primer",
+          "primary key"
+        ],
+        [
+          "kunci asing",
+          "foreign key"
+        ],
+        [
+          "kunci kandidat",
+          "candidate key"
+        ],
+        [
+          "normalisasi",
+          "normalization"
+        ],
+        [
+          "denormalisasi",
+          "denormalization"
+        ],
+        [
+          "indeks",
+          "index"
+        ],
+        [
+          "transaksi",
+          "transaction"
+        ],
+        [
+          "integritas referensial",
+          "referential integrity"
+        ],
+        [
+          "batasan",
+          "constraint"
+        ],
+        [
+          "relasi",
+          "relation"
+        ],
+        [
+          "skema",
+          "schema"
+        ],
+        [
+          "kueri",
+          "query"
+        ],
+        [
+          "penggabungan tabel",
+          "table join"
+        ],
+        [
+          "penguncian",
+          "locking"
+        ],
+        [
+          "kebuntuan",
+          "deadlock"
+        ],
+        [
+          "replikasi",
+          "replication"
+        ],
+        [
+          "pemulihan",
+          "recovery"
+        ],
+        [
+          "pencadangan",
+          "backup"
+        ],
+        [
+          "prosedur tersimpan",
+          "stored procedure"
+        ]
+      ]
+    },
+    {
+      "id": "software",
+      "label": "Rekayasa Perangkat Lunak / Software Engineering",
+      "context": "Rekayasa perangkat lunak: kebutuhan, arsitektur, pengujian, dan siklus pengembangan.",
+      "terms": [
+        [
+          "rekayasa perangkat lunak",
+          "software engineering"
+        ],
+        [
+          "perangkat lunak",
+          "software"
+        ],
+        [
+          "kebutuhan fungsional",
+          "functional requirement"
+        ],
+        [
+          "kebutuhan nonfungsional",
+          "nonfunctional requirement"
+        ],
+        [
+          "pemangku kepentingan",
+          "stakeholder"
+        ],
+        [
+          "kasus penggunaan",
+          "use case"
+        ],
+        [
+          "kriteria penerimaan",
+          "acceptance criteria"
+        ],
+        [
+          "pengujian unit",
+          "unit testing"
+        ],
+        [
+          "pengujian integrasi",
+          "integration testing"
+        ],
+        [
+          "pengujian regresi",
+          "regression testing"
+        ],
+        [
+          "pengujian penerimaan",
+          "acceptance testing"
+        ],
+        [
+          "cakupan pengujian",
+          "test coverage"
+        ],
+        [
+          "utang teknis",
+          "technical debt"
+        ],
+        [
+          "kendali versi",
+          "version control"
+        ],
+        [
+          "permintaan penggabungan",
+          "pull request"
+        ],
+        [
+          "konflik penggabungan",
+          "merge conflict"
+        ],
+        [
+          "arsitektur perangkat lunak",
+          "software architecture"
+        ],
+        [
+          "penerapan berkelanjutan",
+          "continuous deployment"
+        ],
+        [
+          "integrasi berkelanjutan",
+          "continuous integration"
+        ],
+        [
+          "pemeliharaan",
+          "maintenance"
+        ],
+        [
+          "ketergantungan",
+          "dependency"
+        ],
+        [
+          "antarmuka pengguna",
+          "user interface"
+        ],
+        [
+          "pengalaman pengguna",
+          "user experience"
+        ],
+        [
+          "siklus hidup pengembangan",
+          "development lifecycle"
+        ]
+      ]
+    },
+    {
+      "id": "cybersecurity",
+      "label": "Keamanan Siber / Cybersecurity",
+      "context": "Keamanan siber: autentikasi, otorisasi, kriptografi, kerentanan, dan pertahanan jaringan.",
+      "terms": [
+        [
+          "keamanan siber",
+          "cybersecurity"
+        ],
+        [
+          "kerentanan",
+          "vulnerability"
+        ],
+        [
+          "ancaman",
+          "threat"
+        ],
+        [
+          "risiko",
+          "risk"
+        ],
+        [
+          "autentikasi",
+          "authentication"
+        ],
+        [
+          "otentikasi",
+          "authentication"
+        ],
+        [
+          "otorisasi",
+          "authorization"
+        ],
+        [
+          "enkripsi",
+          "encryption"
+        ],
+        [
+          "dekripsi",
+          "decryption"
+        ],
+        [
+          "kunci publik",
+          "public key"
+        ],
+        [
+          "kunci privat",
+          "private key"
+        ],
+        [
+          "tanda tangan digital",
+          "digital signature"
+        ],
+        [
+          "sertifikat digital",
+          "digital certificate"
+        ],
+        [
+          "hak akses",
+          "access permission"
+        ],
+        [
+          "prinsip hak akses minimum",
+          "principle of least privilege"
+        ],
+        [
+          "serangan injeksi SQL",
+          "SQL injection attack"
+        ],
+        [
+          "pemalsuan permintaan lintas situs",
+          "cross-site request forgery"
+        ],
+        [
+          "uji penetrasi",
+          "penetration testing"
+        ],
+        [
+          "kebocoran data",
+          "data breach"
+        ],
+        [
+          "peningkatan hak akses",
+          "privilege escalation"
+        ],
+        [
+          "faktor autentikasi",
+          "authentication factor"
+        ],
+        [
+          "perangkat lunak berbahaya",
+          "malware"
+        ],
+        [
+          "pengelabuan",
+          "phishing"
+        ],
+        [
+          "penolakan layanan",
+          "denial of service"
+        ]
+      ]
+    },
+    {
+      "id": "ai-data",
+      "label": "AI dan Data / AI and Data Science",
+      "context": "Kecerdasan buatan dan data: pembelajaran mesin, pelatihan, evaluasi, dan jaringan saraf.",
+      "terms": [
+        [
+          "kecerdasan buatan",
+          "artificial intelligence"
+        ],
+        [
+          "pembelajaran mesin",
+          "machine learning"
+        ],
+        [
+          "pembelajaran mendalam",
+          "deep learning"
+        ],
+        [
+          "jaringan saraf",
+          "neural network"
+        ],
+        [
+          "data latih",
+          "training data"
+        ],
+        [
+          "data uji",
+          "test data"
+        ],
+        [
+          "data validasi",
+          "validation data"
+        ],
+        [
+          "pelatihan",
+          "training"
+        ],
+        [
+          "inferensi",
+          "inference"
+        ],
+        [
+          "fitur",
+          "feature"
+        ],
+        [
+          "label",
+          "label"
+        ],
+        [
+          "klasifikasi",
+          "classification"
+        ],
+        [
+          "regresi",
+          "regression"
+        ],
+        [
+          "pengelompokan",
+          "clustering"
+        ],
+        [
+          "pembelajaran terawasi",
+          "supervised learning"
+        ],
+        [
+          "pembelajaran tanpa pengawasan",
+          "unsupervised learning"
+        ],
+        [
+          "fungsi kerugian",
+          "loss function"
+        ],
+        [
+          "laju pembelajaran",
+          "learning rate"
+        ],
+        [
+          "penurunan gradien",
+          "gradient descent"
+        ],
+        [
+          "validasi silang",
+          "cross-validation"
+        ],
+        [
+          "matriks kebingungan",
+          "confusion matrix"
+        ],
+        [
+          "presisi",
+          "precision"
+        ],
+        [
+          "akurasi",
+          "accuracy"
+        ],
+        [
+          "pemrosesan bahasa alami",
+          "natural language processing"
+        ]
+      ]
+    }
+  ]
+}

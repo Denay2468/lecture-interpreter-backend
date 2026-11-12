@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 @dataclass
 class Config:
     course_glossary: tuple = ()
+    course_context: str = ""
     cost_stt_per_minute: Optional[float] = None
     cost_mt_per_million: Optional[float] = None
     cost_tts_per_million: Optional[float] = None

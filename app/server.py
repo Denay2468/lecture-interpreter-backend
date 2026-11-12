@@ -51,7 +51,7 @@ from .lifecycle import SessionLifecycle
 from .protocol import encode_playback_frame
 from .session import SessionCoordinator
 from .classroom import Classroom
-from .glossary import parse_glossary
+from .course_profiles import resolve_course_glossary
 
 logger = logging.getLogger("server")
 
@@ -106,7 +106,8 @@ class Server:
                 settings = json.loads(message)
                 if not isinstance(settings, dict) or settings.get("type") != "configure_lecture":
                     raise ValueError("Invalid lecture configuration")
-                params = dict(params, glossary=[settings.get("glossary", "")])
+                params = dict(params, glossary=[settings.get("glossary", "")],
+                              course_profile=[settings.get("course_profile", "")])
             except (ValueError, TypeError, asyncio.TimeoutError):
                 await self._reject(websocket, CLOSE_BAD_REQUEST, "Invalid lecture configuration")
                 return
@@ -115,11 +116,13 @@ class Server:
             await self._reject(websocket, CLOSE_BAD_REQUEST, "Unsupported language pair")
             return
         try:
-            glossary = parse_glossary(params.get("glossary", [""])[0])
+            glossary, course_context = resolve_course_glossary(
+                params.get("course_profile", [""])[0], params.get("glossary", [""])[0], source)
         except ValueError as exc:
             await self._reject(websocket, CLOSE_BAD_REQUEST, str(exc))
             return
-        lecture_cfg = replace(self._cfg, segmentation_language=source, course_glossary=glossary)
+        lecture_cfg = replace(self._cfg, segmentation_language=source, course_glossary=glossary,
+                              course_context=course_context)
         if self._db is None:
             active = self._active[LEGACY_KEY]
             if active.coordinator.teacher_connected or active.starting:

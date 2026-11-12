@@ -98,6 +98,7 @@
     loadRooms();
     loadHistory();
   }
+  BLB.courseProfiles.init();
   el.legacy.addEventListener("change", () => { el.roomBlock.hidden = el.legacy.checked; });
 
   // ---- the lecture ----
@@ -204,6 +205,10 @@
 
   el.start.addEventListener("click", async () => {
     if (state !== "idle") return;
+    let lectureSettings;
+    try { lectureSettings = BLB.courseProfiles.settings(); }
+    catch (e) { setStatus(e.message, "error"); return; }
+    const sourceLanguage = $("source-language").value;
     const legacy = el.legacy.checked;
     let room = "", token = "";
     if (!legacy) {
@@ -233,11 +238,11 @@
     let url = legacy
       ? base + "/ws/teacher?session_id=web-" + Math.random().toString(36).slice(2, 8)
       : base + "/ws/teacher?room=" + encodeURIComponent(room) + "&token=" + encodeURIComponent(token);
-    url += "&source=" + encodeURIComponent($("source-language").value) + "&configure=1";
+    url += "&source=" + encodeURIComponent(sourceLanguage) + "&configure=1";
     let sock;
     try { sock = new WebSocket(url); } catch (e) { backToSetup("That server address isn't valid: " + base, "error"); return; }
     sock.binaryType = "arraybuffer";
-    sock.onopen = () => sock.send(JSON.stringify({type:"configure_lecture", glossary:$("course-glossary").value}));
+    sock.onopen = () => sock.send(JSON.stringify({type:"configure_lecture", ...lectureSettings}));
     ws = sock;
     sock.onmessage = (ev) => { if (sock === ws) handleMessage(ev.data); };
     sock.onclose = (ev) => { if (sock === ws) handleClosed(ev); };

@@ -192,6 +192,22 @@ def create_app(cfg: Config, db: Database, accounts: Accounts, limits: Optional[L
 
     admin_only, staff, student_only = require("ADMIN"), require("ADMIN", "LECTURER"), require("STUDENT")
 
+    # Only one PDF batch per process; reject overlap instead of building an
+    # unbounded queue of 100 MB requests. Originals are deleted after extraction.
+    import asyncio
+    from .material_upload import analyze_upload
+    material_lock = asyncio.Lock()
+    material_limits = RateLimiter(10, 3600)
+
+    @app.post("/materials/analyze")
+    async def analyze_materials(request: Request, language: str = "id", user: AuthUser = Depends(staff)):
+        if material_lock.locked():
+            raise HTTPException(429, "Another PDF batch is processing. Try again shortly.")
+        if not material_limits.allow(str(user.id)):
+            raise HTTPException(429, "PDF processing limit reached. Try again later.")
+        async with material_lock:
+            return await analyze_upload(request, language)
+
     @app.get("/health")
     async def health():
         return {"status": "ok"}

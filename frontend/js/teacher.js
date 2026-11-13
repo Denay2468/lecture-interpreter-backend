@@ -206,7 +206,7 @@
   el.start.addEventListener("click", async () => {
     if (state !== "idle") return;
     let lectureSettings;
-    try { lectureSettings = BLB.courseProfiles.settings(); }
+    try { lectureSettings = {...BLB.courseProfiles.settings(), ...(BLB.courseMaterials ? BLB.courseMaterials.settings() : {})}; }
     catch (e) { setStatus(e.message, "error"); return; }
     const sourceLanguage = $("source-language").value;
     const legacy = el.legacy.checked;

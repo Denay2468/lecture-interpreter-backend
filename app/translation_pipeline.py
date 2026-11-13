@@ -40,6 +40,7 @@ from .config import Config
 from .segmentation import Segment
 from .glossary import protect, unprotect, directional_pairs
 from .slang import normalize_indonesian
+from .materials import relevant_context
 from dataclasses import replace
 
 logger = logging.getLogger("translation_pipeline")
@@ -111,7 +112,8 @@ class TranslationHTTPClient:
         payload = {"text": protected, "source_lang": source_lang, "target_lang": target_lang}
         # Context is a hint, not extra text to translate/speak. Keep it bounded
         # and use the same snapshot on retries (not worker completion order).
-        translation_context = "\n".join(filter(None, (self._cfg.course_context, context[-1500:])))
+        material_context = relevant_context(self._cfg.material_passages, text, context, pairs)
+        translation_context = "\n".join(filter(None, (self._cfg.course_context, material_context, context[-1500:])))
         if translation_context:
             payload["context"] = translation_context
         if tagged:

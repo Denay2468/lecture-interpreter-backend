@@ -11,16 +11,25 @@ from app.translation_pipeline import TranslationHTTPClient
 class Profiles(unittest.TestCase):
     def test_catalog_all_courses_valid_and_distinct(self):
         records = json.loads(CATALOG.read_text())['courses']
-        self.assertEqual(len(records), 6)
+        self.assertEqual(len(records), 20)
+        self.assertEqual(len({r["id"] for r in records}), 20)
+        departments = {d["id"] for d in json.loads(CATALOG.read_text())["departments"]}
+        self.assertEqual(len(departments), 8)
+        self.assertTrue(all(r["department"] in departments for r in records))
         for record in records:
             pairs, context = resolve_course_glossary(record['id'], '', 'id')
-            self.assertEqual(len(pairs), 24)
+            self.assertTrue(0 < len(pairs) <= 40)
             self.assertTrue(context)
         network, _ = resolve_course_glossary('networks', '', 'id')
         ai, _ = resolve_course_glossary('ai-data', '', 'id')
         self.assertEqual(unprotect(protect('jaringan', network)[0]), 'network')
         self.assertEqual(protect('jaringan', ai), ('jaringan', False))
         self.assertEqual(unprotect(protect('jaringan saraf', ai)[0]), 'neural network')
+
+    def test_subject_meanings_are_isolated(self):
+        for course, term, expected in [("anatomy", "jaringan", "tissue"), ("networks", "jaringan", "network"), ("structural", "tegangan", "stress"), ("circuits", "tegangan", "voltage")]:
+            pairs, _ = resolve_course_glossary(course, "", "id")
+            self.assertEqual(unprotect(protect(term, pairs)[0]), expected)
 
     def test_override_is_lecture_scoped(self):
         pairs, _ = resolve_course_glossary('networks', 'JARINGAN = computer network\nTCP = TCP', 'id')

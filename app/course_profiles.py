@@ -1,4 +1,4 @@
-"""Read-only IT course seeds shared with the lecturer UI; resolved per session."""
+"""Read-only academic course seeds shared with the lecturer UI; resolved per session."""
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -22,9 +22,9 @@ def resolve_course_glossary(profile_id, text, source_language):
     if not profile_id:
         return custom, ''
     if source_language != 'id':
-        raise ValueError('IT course profiles currently require Indonesian input')
+        raise ValueError('Course profiles currently require Indonesian input')
     if profile_id not in _profiles():
-        raise ValueError('Unknown IT course profile')
+        raise ValueError('Unknown course profile')
     pairs, context = _profiles()[profile_id]
     merged = {s.casefold(): (s, t) for s, t in pairs}
     merged.update({s.casefold(): (s, t) for s, t in custom})

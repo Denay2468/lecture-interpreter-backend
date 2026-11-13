@@ -4,7 +4,8 @@ No document instructions are executed. Text is passed only as translation contex
 """
 from dataclasses import dataclass
 import re
-from .course_profiles import _profiles
+from .course_profiles import _profiles, CATALOG
+import json
 
 MAX_FILES = 10
 MAX_BYTES = 10 * 1024 * 1024
@@ -86,7 +87,11 @@ def automatic_terms(documents, language):
         return ()
     mappings = {}
     catalog = {}
-    for pairs, _ in _profiles().values():
+    it_ids = {c['id'] for c in json.loads(CATALOG.read_text(encoding='utf-8'))['courses']
+              if c.get('department', 'it') == 'it'}
+    for profile_id, (pairs, _) in _profiles().items():
+        if profile_id not in it_ids:
+            continue
         for source, target in pairs:
             catalog.setdefault(source.casefold(), set()).add((source, target))
     for key, choices in catalog.items():

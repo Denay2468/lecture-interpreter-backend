@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "source_language": "id",
   "target_language": "en",
   "courses": [
@@ -104,7 +104,8 @@
           "throughput",
           "throughput"
         ]
-      ]
+      ],
+      "department": "it"
     },
     {
       "id": "programming",
@@ -207,7 +208,8 @@
           "daftar tertaut",
           "linked list"
         ]
-      ]
+      ],
+      "department": "it"
     },
     {
       "id": "databases",
@@ -310,7 +312,8 @@
           "prosedur tersimpan",
           "stored procedure"
         ]
-      ]
+      ],
+      "department": "it"
     },
     {
       "id": "software",
@@ -413,7 +416,8 @@
           "siklus hidup pengembangan",
           "development lifecycle"
         ]
-      ]
+      ],
+      "department": "it"
     },
     {
       "id": "cybersecurity",
@@ -516,7 +520,8 @@
           "penolakan layanan",
           "denial of service"
         ]
-      ]
+      ],
+      "department": "it"
     },
     {
       "id": "ai-data",
@@ -619,7 +624,490 @@
           "pemrosesan bahasa alami",
           "natural language processing"
         ]
+      ],
+      "department": "it"
+    },
+    {
+      "id": "anatomy",
+      "label": "Anatomi dan Histologi",
+      "department": "medicine",
+      "context": "Anatomi manusia dan histologi: struktur organ, sel, dan jaringan tubuh. Bukan jaringan komputer.",
+      "terms": [
+        [
+          "jaringan",
+          "tissue"
+        ],
+        [
+          "jaringan ikat",
+          "connective tissue"
+        ],
+        [
+          "sumsum tulang",
+          "bone marrow"
+        ],
+        [
+          "pembuluh darah",
+          "blood vessel"
+        ],
+        [
+          "sel saraf",
+          "nerve cell"
+        ],
+        [
+          "otot rangka",
+          "skeletal muscle"
+        ]
       ]
+    },
+    {
+      "id": "physiology",
+      "label": "Fisiologi",
+      "department": "medicine",
+      "context": "Fisiologi manusia: fungsi organ, pengaturan tubuh, pernapasan, dan sirkulasi.",
+      "terms": [
+        [
+          "tekanan darah",
+          "blood pressure"
+        ],
+        [
+          "curah jantung",
+          "cardiac output"
+        ],
+        [
+          "pertukaran gas",
+          "gas exchange"
+        ],
+        [
+          "keseimbangan cairan",
+          "fluid balance"
+        ],
+        [
+          "potensial aksi",
+          "action potential"
+        ],
+        [
+          "laju filtrasi glomerulus",
+          "glomerular filtration rate"
+        ]
+      ]
+    },
+    {
+      "id": "civil-law",
+      "label": "Hukum Perdata",
+      "department": "law",
+      "context": "Hukum perdata Indonesia: perjanjian, kewajiban, dan hubungan hukum antar pihak. Terjemahan tidak menyamakan sistem hukum antarnegara.",
+      "terms": [
+        [
+          "perbuatan melawan hukum",
+          "unlawful act"
+        ],
+        [
+          "wanprestasi",
+          "breach of contract"
+        ],
+        [
+          "perjanjian",
+          "agreement"
+        ],
+        [
+          "ganti rugi",
+          "damages"
+        ],
+        [
+          "badan hukum",
+          "legal entity"
+        ],
+        [
+          "kecakapan hukum",
+          "legal capacity"
+        ]
+      ]
+    },
+    {
+      "id": "criminal-law",
+      "label": "Hukum Pidana",
+      "department": "law",
+      "context": "Hukum pidana Indonesia: unsur tindak pidana, pembuktian, dan proses peradilan.",
+      "terms": [
+        [
+          "tindak pidana",
+          "criminal offense"
+        ],
+        [
+          "asas legalitas",
+          "principle of legality"
+        ],
+        [
+          "praduga tak bersalah",
+          "presumption of innocence"
+        ],
+        [
+          "alat bukti",
+          "means of evidence"
+        ],
+        [
+          "pertanggungjawaban pidana",
+          "criminal liability"
+        ],
+        [
+          "penuntutan",
+          "prosecution"
+        ]
+      ]
+    },
+    {
+      "id": "marketing",
+      "label": "Manajemen Pemasaran",
+      "department": "management",
+      "context": "Manajemen pemasaran: pelanggan, segmentasi, produk, harga, dan posisi merek.",
+      "terms": [
+        [
+          "segmentasi pasar",
+          "market segmentation"
+        ],
+        [
+          "pasar sasaran",
+          "target market"
+        ],
+        [
+          "bauran pemasaran",
+          "marketing mix"
+        ],
+        [
+          "ekuitas merek",
+          "brand equity"
+        ],
+        [
+          "perilaku konsumen",
+          "consumer behavior"
+        ],
+        [
+          "saluran distribusi",
+          "distribution channel"
+        ]
+      ]
+    },
+    {
+      "id": "operations",
+      "label": "Manajemen Operasi",
+      "department": "management",
+      "context": "Manajemen operasi: proses produksi, persediaan, kualitas, dan rantai pasok.",
+      "terms": [
+        [
+          "rantai pasok",
+          "supply chain"
+        ],
+        [
+          "pengendalian persediaan",
+          "inventory control"
+        ],
+        [
+          "waktu tunggu",
+          "lead time"
+        ],
+        [
+          "kapasitas produksi",
+          "production capacity"
+        ],
+        [
+          "pengendalian mutu",
+          "quality control"
+        ],
+        [
+          "titik pemesanan kembali",
+          "reorder point"
+        ]
+      ]
+    },
+    {
+      "id": "financial-accounting",
+      "label": "Akuntansi Keuangan",
+      "department": "accounting",
+      "context": "Akuntansi keuangan: pencatatan transaksi dan penyajian laporan keuangan.",
+      "terms": [
+        [
+          "laporan posisi keuangan",
+          "statement of financial position"
+        ],
+        [
+          "arus kas",
+          "cash flow"
+        ],
+        [
+          "piutang usaha",
+          "accounts receivable"
+        ],
+        [
+          "utang usaha",
+          "accounts payable"
+        ],
+        [
+          "beban penyusutan",
+          "depreciation expense"
+        ],
+        [
+          "laba ditahan",
+          "retained earnings"
+        ]
+      ]
+    },
+    {
+      "id": "auditing",
+      "label": "Pengauditan",
+      "department": "accounting",
+      "context": "Pengauditan laporan keuangan: bukti audit, pengendalian, risiko, dan opini auditor.",
+      "terms": [
+        [
+          "bukti audit",
+          "audit evidence"
+        ],
+        [
+          "risiko audit",
+          "audit risk"
+        ],
+        [
+          "pengendalian internal",
+          "internal control"
+        ],
+        [
+          "salah saji material",
+          "material misstatement"
+        ],
+        [
+          "opini wajar tanpa modifikasian",
+          "unmodified opinion"
+        ],
+        [
+          "prosedur substantif",
+          "substantive procedures"
+        ]
+      ]
+    },
+    {
+      "id": "structural",
+      "label": "Analisis Struktur",
+      "department": "civil",
+      "context": "Teknik sipil dan analisis struktur: gaya, beban, deformasi, dan kestabilan bangunan.",
+      "terms": [
+        [
+          "gaya geser",
+          "shear force"
+        ],
+        [
+          "momen lentur",
+          "bending moment"
+        ],
+        [
+          "beban mati",
+          "dead load"
+        ],
+        [
+          "beban hidup",
+          "live load"
+        ],
+        [
+          "tegangan",
+          "stress"
+        ],
+        [
+          "regangan",
+          "strain"
+        ]
+      ]
+    },
+    {
+      "id": "soil",
+      "label": "Mekanika Tanah",
+      "department": "civil",
+      "context": "Mekanika tanah dan geoteknik: karakteristik tanah, fondasi, dan kestabilan lereng.",
+      "terms": [
+        [
+          "daya dukung tanah",
+          "soil bearing capacity"
+        ],
+        [
+          "kuat geser tanah",
+          "soil shear strength"
+        ],
+        [
+          "tekanan air pori",
+          "pore water pressure"
+        ],
+        [
+          "pemadatan tanah",
+          "soil compaction"
+        ],
+        [
+          "penurunan tanah",
+          "ground settlement"
+        ],
+        [
+          "kestabilan lereng",
+          "slope stability"
+        ]
+      ]
+    },
+    {
+      "id": "circuits",
+      "label": "Rangkaian Listrik",
+      "department": "electrical",
+      "context": "Teknik elektro dan rangkaian listrik: arus, tegangan, impedansi, dan daya. Tegangan berarti voltage, bukan mechanical stress.",
+      "terms": [
+        [
+          "tegangan",
+          "voltage"
+        ],
+        [
+          "arus listrik",
+          "electric current"
+        ],
+        [
+          "hambatan listrik",
+          "electrical resistance"
+        ],
+        [
+          "rangkaian seri",
+          "series circuit"
+        ],
+        [
+          "rangkaian paralel",
+          "parallel circuit"
+        ],
+        [
+          "daya aktif",
+          "active power"
+        ]
+      ]
+    },
+    {
+      "id": "control",
+      "label": "Sistem Kendali",
+      "department": "electrical",
+      "context": "Teknik elektro dan sistem kendali: model dinamis, umpan balik, kestabilan, dan respons sistem.",
+      "terms": [
+        [
+          "umpan balik",
+          "feedback"
+        ],
+        [
+          "fungsi alih",
+          "transfer function"
+        ],
+        [
+          "ruang keadaan",
+          "state space"
+        ],
+        [
+          "galat keadaan tunak",
+          "steady-state error"
+        ],
+        [
+          "waktu naik",
+          "rise time"
+        ],
+        [
+          "waktu tunak",
+          "settling time"
+        ]
+      ]
+    },
+    {
+      "id": "communication-theory",
+      "label": "Teori Komunikasi",
+      "department": "communication",
+      "context": "Ilmu komunikasi: pesan, media, khalayak, dan interaksi sosial.",
+      "terms": [
+        [
+          "komunikasi antarpribadi",
+          "interpersonal communication"
+        ],
+        [
+          "komunikasi massa",
+          "mass communication"
+        ],
+        [
+          "khalayak",
+          "audience"
+        ],
+        [
+          "pembingkaian",
+          "framing"
+        ],
+        [
+          "penetapan agenda",
+          "agenda setting"
+        ],
+        [
+          "pemimpin opini",
+          "opinion leader"
+        ]
+      ]
+    },
+    {
+      "id": "public-relations",
+      "label": "Hubungan Masyarakat",
+      "department": "communication",
+      "context": "Hubungan masyarakat: reputasi organisasi, komunikasi krisis, media, dan pemangku kepentingan.",
+      "terms": [
+        [
+          "hubungan masyarakat",
+          "public relations"
+        ],
+        [
+          "pemangku kepentingan",
+          "stakeholder"
+        ],
+        [
+          "siaran pers",
+          "press release"
+        ],
+        [
+          "komunikasi krisis",
+          "crisis communication"
+        ],
+        [
+          "citra organisasi",
+          "organizational image"
+        ],
+        [
+          "hubungan media",
+          "media relations"
+        ]
+      ]
+    }
+  ],
+  "departments": [
+    {
+      "id": "it",
+      "label": "Teknologi Informasi / Informatika"
+    },
+    {
+      "id": "medicine",
+      "label": "Kedokteran"
+    },
+    {
+      "id": "law",
+      "label": "Hukum"
+    },
+    {
+      "id": "management",
+      "label": "Manajemen"
+    },
+    {
+      "id": "accounting",
+      "label": "Akuntansi"
+    },
+    {
+      "id": "civil",
+      "label": "Teknik Sipil"
+    },
+    {
+      "id": "electrical",
+      "label": "Teknik Elektro"
+    },
+    {
+      "id": "communication",
+      "label": "Ilmu Komunikasi"
     }
   ]
 }

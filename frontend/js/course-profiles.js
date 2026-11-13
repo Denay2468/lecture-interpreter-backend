@@ -6,15 +6,24 @@
   const note = document.getElementById("course-profile-note");
   const preview = document.getElementById("course-preview");
   const custom = document.getElementById("course-glossary");
+  const department = document.getElementById("course-department");
   let courses = [];
+  function filterCourses() {
+    select.replaceChildren(new Option("Custom glossary / PDF context only", ""));
+    courses.filter(c => c.department === department.value).forEach(c => {
+      select.appendChild(new Option(c.label, c.id));
+    });
+    refresh();
+  }
   function refresh() {
     const supported = language.value === "id";
-    select.disabled = !supported || !courses.length;
+    department.disabled = !supported || !courses.length;
+    select.disabled = !supported || !department.value || !courses.length;
     if (!supported) select.value = "";
     const course = courses.find(c => c.id === select.value);
     preview.textContent = course ? course.terms.map(([s, t]) => s + " = " + t).join("\n") : "No preset selected.";
-    note.textContent = !supported ? "IT presets currently support Indonesian input. Your custom terms are kept."
-      : course ? course.terms.length + " starter terms. Review with your lecturer; additional terms below override matching entries."
+    note.textContent = !supported ? "Course presets currently support Indonesian input. Your custom terms are kept."
+      : course ? course.terms.length + " starter terms applied automatically. Additional terms below override matching entries."
       : "Choose a course to apply its starter terms, or enter a custom glossary below.";
   }
   BLB.courseProfiles = {
@@ -36,6 +45,7 @@
       return {course_profile: select.value, glossary: custom.value};
     }
   };
+  department.addEventListener("change", filterCourses);
   select.addEventListener("change", refresh);
   language.addEventListener("change", refresh);
   let initialized = false;
@@ -48,11 +58,11 @@
   }).then(data => {
     if (!Array.isArray(data.courses)) throw new Error("Invalid catalog");
     courses = data.courses;
-    courses.forEach(c => {
+    data.departments.forEach(c => {
       const option = document.createElement("option");
-      option.value = c.id; option.textContent = c.label; select.appendChild(option);
+      option.value = c.id; option.textContent = c.label; department.appendChild(option);
     });
-    refresh();
+    filterCourses();
   }).catch(() => {
     select.disabled = true;
     note.textContent = "Course presets could not load. Custom glossary is still available. Reload to retry.";

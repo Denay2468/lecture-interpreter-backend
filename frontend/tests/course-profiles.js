@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root,'js/course-profiles.js'),'utf8');
 const catalog = JSON.parse(fs.readFileSync(path.join(root,'data/it-courses.json'),'utf8'));
 async function page(fail=false) {
-  const dom = new JSDOM('<select id="source-language"><option value="id">ID</option><option value="ja">JA</option></select><select id="course-profile"><option value="">Custom</option></select><p id="course-profile-note"></p><pre id="course-preview"></pre><textarea id="course-glossary"></textarea>', {runScripts:'outside-only'});
+  const dom = new JSDOM('<select id="source-language"><option value="id">ID</option><option value="ja">JA</option></select><select id="course-department"><option value="">General</option></select><select id="course-profile"><option value="">Custom</option></select><p id="course-profile-note"></p><pre id="course-preview"></pre><textarea id="course-glossary"></textarea>', {runScripts:'outside-only'});
   dom.window.BLB = {};
   dom.window.fetch = async () => ({ok:!fail, json: async () => catalog});
   dom.window.eval(code);
@@ -19,6 +19,9 @@ async function page(fail=false) {
 (async () => {
   const d=await page(), w=d.window, get=id=>w.document.getElementById(id);
   const change=id=>get(id).dispatchEvent(new w.Event('change'));
+  assert.equal(get('course-department').options.length, 9);
+  assert.equal(get('course-profile').options.length, 1);
+  get('course-department').value='it';change('course-department');
   assert.equal(get('course-profile').options.length, 7);
   get('course-profile').value='networks';change('course-profile');
   assert(get('course-preview').textContent.includes('kehilangan paket = packet loss'));
@@ -36,9 +39,20 @@ async function page(fail=false) {
   assert.throws(()=>w.BLB.courseProfiles.settings(), /Duplicate/);
   get('course-glossary').value='missing equals';
   assert.throws(()=>w.BLB.courseProfiles.settings(), /source term/);
+  get('course-glossary').value='custom = preserved';
+  get('course-department').value='medicine';change('course-department');
+  assert.equal(get('course-profile').value,'');
+  assert.equal(get('course-profile').options.length,3);
+  assert(!Array.from(get('course-profile').options).some(o=>o.value==='networks'));
+  get('course-profile').value='anatomy';change('course-profile');
+  assert(get('course-preview').textContent.includes('jaringan = tissue'));
+  assert.equal(w.BLB.courseProfiles.settings().course_profile,'anatomy');
+  assert.equal(get('course-glossary').value,'custom = preserved');
+  get('course-department').value='';change('course-department');
+  assert.equal(w.BLB.courseProfiles.settings().course_profile,'');
   const failed=await page(true);
   assert(failed.window.document.getElementById('course-profile').disabled);
   assert.equal(failed.window.BLB.courseProfiles.settings().course_profile,'');
   d.window.close();failed.window.close();
-  console.log('PASS: six courses, preview, payload, language guard, override preservation, limits, duplicates, invalid syntax, catalog failure fallback');
+  console.log('PASS: eight departments and twenty courses, preview, payload, language guard, override preservation, limits, duplicates, invalid syntax, catalog failure fallback');
 })().catch(e=>{console.error(e);process.exit(1);});

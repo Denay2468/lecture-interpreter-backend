@@ -73,3 +73,5 @@ outside that material, and capture expected/source/translated text. Repeat with
 no module using the same audio. Record term accuracy and first-audio latency.
 Offline tests validate boundaries, scope, upload/auth limits and API payloads;
 they do not measure live linguistic accuracy or prove zero mistranslations.
+
+Department/course selection is described in [department-courses.md](department-courses.md). A selected course takes precedence over automatic PDF catalog term matching; PDF passage context remains active.

@@ -83,9 +83,10 @@ class TranslationHTTPClient:
         self.mt_characters = 0
         self.tts_characters = 0
 
-    async def translate(self, text: str, source_lang: str = "ID", target_lang: str = "EN-US") -> str:
+    async def translate(self, text: str, source_lang: str = "ID", target_lang: str = "EN-US", *, context: str = "") -> str:
         if self._closed:
             raise RuntimeError("translation HTTP client is closed")
+        source_lang, target_lang = source_lang.upper(), target_lang.upper()
         if source_lang.split("-")[0] == target_lang.split("-")[0]:
             return text
         if not self._cfg.deepl_api_key:
@@ -108,8 +109,11 @@ class TranslationHTTPClient:
             else:
                 protected = normalize_indonesian(protected)
         payload = {"text": protected, "source_lang": source_lang, "target_lang": target_lang}
-        if self._cfg.course_context:
-            payload["context"] = self._cfg.course_context
+        # Context is a hint, not extra text to translate/speak. Keep it bounded
+        # and use the same snapshot on retries (not worker completion order).
+        translation_context = "\n".join(filter(None, (self._cfg.course_context, context[-1500:])))
+        if translation_context:
+            payload["context"] = translation_context
         if tagged:
             payload.update(tag_handling="xml", ignore_tags="blbterm")
         self.mt_characters += len(text)
@@ -303,11 +307,12 @@ class TranslationQueue:
         self._on_translated = on_translated or self._default_debug_sink
         self._on_stream = on_stream
         self._http = TranslationHTTPClient(cfg)
-        self._translate_fn = translate_fn or (lambda text: self._http.translate(text, source_lang=cfg.segmentation_language.upper()))
+        self._translate_fn = translate_fn
+        self._source_history = ""
         self._ready_times = {}
         self._synthesize_fn = synthesize_fn or self._http.synthesize
 
-        self._queue: asyncio.Queue[tuple[Segment, float]] = asyncio.Queue()
+        self._queue: asyncio.Queue[tuple[Segment, float, str]] = asyncio.Queue()
         self._worker_tasks: list[asyncio.Task] = []
 
         self.segments_delivered = 0
@@ -326,10 +331,15 @@ class TranslationQueue:
         """Wired as Segmenter's on_segment callback. Non-blocking — a
         full teacher-audio-length backlog is accepted, per Rule 6."""
         now = time.monotonic()
+        # Capture before the first await: parallel workers must never see
+        # future phrases or another classroom's transcript as context.
+        context = self._source_history
+        if segment.transcript.strip():
+            self._source_history = (context + "\n" + segment.transcript.strip()).strip()[-1500:]
         self._ready_times[segment.sequence] = now
         if self._on_stream:
             await self._on_stream(segment.sequence, {"type": "open", "ready_at": now})
-        await self._queue.put((segment, now))
+        await self._queue.put((segment, now, context))
 
     async def stop(self) -> None:
         # Let already-enqueued segments finish processing rather than
@@ -353,6 +363,7 @@ class TranslationQueue:
                 pass
 
         await self._http.close()
+        self._source_history = ""
 
         logger.info(
             "Translation queue stopped for session %s (delivered=%d skipped=%d)",
@@ -361,12 +372,12 @@ class TranslationQueue:
 
     async def _worker_loop(self) -> None:
         while True:
-            segment, enqueued = await self._queue.get()
+            segment, enqueued, context = await self._queue.get()
             started = time.monotonic()
             logger.info("latency session=%s sequence=%d stage=queue_wait elapsed_ms=%.1f depth=%d",
                         self._session_id, segment.sequence, (started - enqueued) * 1000, self._queue.qsize())
             try:
-                await self._process_segment(segment)
+                await self._process_segment(segment, context)
             except Exception:
                 # A downstream callback must not permanently kill a worker.
                 logger.exception("Session %s segment #%d delivery failed", self._session_id, segment.sequence)
@@ -381,7 +392,7 @@ class TranslationQueue:
                             self._session_id, segment.sequence, (time.monotonic() - started) * 1000)
                 self._queue.task_done()
 
-    async def _process_segment(self, segment: Segment) -> None:
+    async def _process_segment(self, segment: Segment, context: str = "") -> None:
         if not segment.transcript:
             # A silence/noise segment with nothing recognized. Still
             # emit a result (state="skipped", error=None) rather than
@@ -404,7 +415,10 @@ class TranslationQueue:
 
         deadline = time.monotonic() + self._cfg.translation_segment_timeout_s
         translated_text, mt_error = await self._attempt_with_retry(
-            lambda: self._translate_fn(segment.transcript), stage="MT", deadline=deadline,
+            lambda: (self._translate_fn(segment.transcript) if self._translate_fn else
+                     self._http.translate(segment.transcript,
+                                          source_lang=self._cfg.segmentation_language.upper(), context=context)),
+            stage="MT", deadline=deadline,
         )
         if mt_error:
             await self._emit(self._skipped_result(segment, stage="MT", error=mt_error))

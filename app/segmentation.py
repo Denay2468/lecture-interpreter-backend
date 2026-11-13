@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Awaitable, Callable, Optional, Union
 
 from .config import Config
+from .phrase_boundary import incomplete_phrase
 
 logger = logging.getLogger("segmentation")
 
@@ -238,11 +239,7 @@ class Segmenter:
             return
         # Avoid ending on common connectors/negations. This is a heuristic,
         # not a claim that arbitrary short phrases are semantically complete.
-        if words[-1].strip(".,!?;:") in {
-            "tidak", "bukan", "belum", "jangan", "sangat", "terlalu", "dan",
-            "atau", "yang", "di", "ke", "dari", "not", "very", "the", "a",
-            "and", "or", "to", "of", "no", "muy", "de", "el", "la",
-        }:
+        if incomplete_phrase(transcript, self._cfg.course_glossary):
             return
         self._last_finalize_ms = now
         self._finalize_pending = True
@@ -276,6 +273,7 @@ class Segmenter:
             await self._close_segment(trigger="speech_final")
         elif (event == "results" and is_final and transcript
               and self._cfg.incremental_phrases_enabled
+              and not incomplete_phrase(" ".join(self._current_transcript_parts), self._cfg.course_glossary)
               and len(" ".join(self._current_transcript_parts).split()) >= self._cfg.phrase_target_words):
             # Commit only finalized STT text, never mutable interim hypotheses.
             await self._close_segment(trigger="stable_phrase")

@@ -52,7 +52,7 @@
       const result = await BLB.api.upload('/materials/analyze?language=' + encodeURIComponent(lang), form);
       if (generation !== version) return;
       documents = result.documents;
-      status.textContent = documents.length + ' modules ready. Relevant passages and recognized technical terms will be applied automatically.';
+      status.textContent = documents.length + ' modules ready. Relevant module passages will support translation automatically.';
     } catch (e) {
       if (generation !== version) return;
       failure = e.message || 'PDF processing failed.'; status.textContent = failure;

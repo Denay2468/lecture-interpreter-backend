@@ -41,6 +41,7 @@ from .segmentation import Segment
 from .glossary import protect, unprotect, directional_pairs
 from .slang import normalize_indonesian
 from .materials import relevant_context
+from .context_agent import ContextAgent
 from dataclasses import replace
 
 logger = logging.getLogger("translation_pipeline")
@@ -309,6 +310,7 @@ class TranslationQueue:
         self._on_translated = on_translated or self._default_debug_sink
         self._on_stream = on_stream
         self._http = TranslationHTTPClient(cfg)
+        self._context_agent = ContextAgent(cfg)
         self._translate_fn = translate_fn
         self._source_history = ""
         self._ready_times = {}
@@ -338,12 +340,18 @@ class TranslationQueue:
         context = self._source_history
         if segment.transcript.strip():
             self._source_history = (context + "\n" + segment.transcript.strip()).strip()[-1500:]
+        snapshot = self._context_agent.snapshot(segment.transcript)
+        if segment.transcript.strip():
+            self._context_agent.submit(self._source_history)
+        if snapshot:
+            context = ("Recent speech:\n" + context + "\nBackground topic hint (may be outdated):\n" + snapshot)
         self._ready_times[segment.sequence] = now
         if self._on_stream:
             await self._on_stream(segment.sequence, {"type": "open", "ready_at": now})
         await self._queue.put((segment, now, context))
 
     async def stop(self) -> None:
+        await self._context_agent.close()
         # Let already-enqueued segments finish processing rather than
         # discarding them — same "don't silently drop in-flight work"
         # principle as the Jitter Buffer's flush() and Teacher Audio

@@ -121,11 +121,8 @@ class Server:
             glossary, course_context = resolve_course_glossary(
                 params.get("course_profile", [""])[0], params.get("glossary", [""])[0], source)
             documents = validate_materials(params.get("materials", [[]])[0])
-            automatic = () if params.get("course_profile", [""])[0] else automatic_terms(documents, source)
-            merged = {s.casefold(): (s, t) for s, t in automatic}
-            # Lecturer-selected course and explicit overrides win conflicts.
-            merged.update({s.casefold(): (s, t) for s, t in glossary})
-            glossary = tuple(merged.values())
+            # PDF excerpts provide context; do not force a fixed vocabulary
+            # for the whole lecture when the speaker may change topics.
         except ValueError as exc:
             await self._reject(websocket, CLOSE_BAD_REQUEST, str(exc))
             return

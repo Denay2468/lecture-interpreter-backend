@@ -11,6 +11,14 @@ from dotenv import load_dotenv
 
 @dataclass
 class Config:
+    context_agent_enabled: bool = False
+    context_agent_url: str = ""
+    context_agent_model: str = ""
+    context_agent_api_key: str = ""
+    context_agent_interval_s: float = 15.0
+    context_agent_timeout_s: float = 2.0
+    context_agent_max_age_s: float = 15.0
+    context_agent_min_confidence: float = 0.8
     course_glossary: tuple = ()
     course_context: str = ""
     material_passages: tuple = ()
@@ -248,4 +256,22 @@ def load_config(env_path: str | None = None) -> Config:
 
     cfg.question_min_duration_ms = _get("QUESTION_MIN_DURATION_MS", cfg.question_min_duration_ms)
     cfg.elevenlabs_voice_id_question = os.getenv("ELEVENLABS_VOICE_ID_QUESTION", cfg.elevenlabs_voice_id_question)
+    cfg.context_agent_enabled = os.getenv("CONTEXT_AGENT_ENABLED", "false").strip().lower() in ("1", "true", "yes")
+    cfg.context_agent_url = os.getenv("CONTEXT_AGENT_URL", "").strip()
+    cfg.context_agent_model = os.getenv("CONTEXT_AGENT_MODEL", "").strip()
+    cfg.context_agent_api_key = os.getenv("CONTEXT_AGENT_API_KEY", "").strip()
+    for field in ("context_agent_interval_s", "context_agent_timeout_s", "context_agent_max_age_s", "context_agent_min_confidence"):
+        setattr(cfg, field, _get(field.upper(), getattr(cfg, field)))
+    import math
+    if not all(math.isfinite(v) for v in (cfg.context_agent_interval_s, cfg.context_agent_timeout_s, cfg.context_agent_max_age_s, cfg.context_agent_min_confidence)):
+        raise ValueError("Context agent values must be finite")
+    if cfg.context_agent_interval_s < 1 or not 0 < cfg.context_agent_timeout_s <= 10 or cfg.context_agent_max_age_s <= 0 or not 0 <= cfg.context_agent_min_confidence <= 1:
+        raise ValueError("Invalid context agent limits")
+    if cfg.context_agent_enabled:
+        from urllib.parse import urlsplit
+        url = urlsplit(cfg.context_agent_url)
+        if url.scheme not in ("http", "https") or not url.netloc or url.username or url.password or not cfg.context_agent_model:
+            raise ValueError("Enabled context agent requires a valid URL and model")
+        if url.scheme == "http" and url.hostname not in ("localhost", "127.0.0.1", "::1"):
+            raise ValueError("Remote context providers require HTTPS")
     return cfg

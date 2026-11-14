@@ -22,26 +22,16 @@
       </section>
       <section class="card"><h2>2. Language you speak</h2>
         <select id="source-language" aria-label="Language spoken by the lecturer" style="margin:0"><option value="id">Indonesian</option><option value="en">English</option><option value="zh">Mandarin Chinese</option><option value="ja">Japanese</option><option value="es">Spanish</option></select></section>
-      <section class="card"><h2>3. Course materials &amp; terminology</h2>
+      <section class="card"><h2>3. Lecture materials</h2>
         <label for="course-pdfs">PDF modules for this lecture</label>
         <input id="course-pdfs" type="file" accept=".pdf,application/pdf" multiple>
-        <p class="muted small">Choose up to 10 PDFs, 10 MB each. Your modules are processed automatically and used as context for technical terms. No term-by-term review is required.</p>
-        <p class="muted small">Text PDFs only, up to 100 pages and 100,000 extracted characters each. Scans need OCR first. Files are processed on this server; relevant text is sent to the translation provider during the lecture. Accuracy is not guaranteed.</p>
+        <p class="muted small">Choose up to 10 PDFs, 10 MB each. Your modules are processed automatically and used as context for technical terms. Upload is optional.</p>
+        <p class="muted small">Text PDFs only, up to 100 pages and 100,000 extracted characters each. Scans need OCR first. Files are processed on this server; relevant text and speech transcripts may be sent to configured translation and context providers during the lecture. Accuracy is not guaranteed.</p>
         <p id="materials-status" class="muted small" role="status" aria-live="polite">No modules attached. Upload is optional.</p>
         <ul id="materials-list" style="padding-left:20px"></ul>
         <button id="materials-clear" type="button" class="secondary" hidden>Clear modules</button>
         <p class="muted small">Modules apply to the next lecture you start. They are cleared when this page is reloaded. Select only the material for today's lesson.</p>
-        <label for="course-department">Department / Jurusan</label>
-        <select id="course-department" disabled><option value="">General / PDF context only</option></select>
-        <label for="course-profile">Course / Mata kuliah (Indonesian to English)</label>
-        <select id="course-profile" disabled><option value="">Custom glossary only</option></select>
-        <p id="course-profile-note" class="muted small" role="status">Loading departments and courses...</p>
-        <details><summary>View active terminology (optional)</summary><pre id="course-preview" style="white-space:pre-wrap"></pre></details>
       </section>
-      <details class="card"><summary>Additional terms / overrides</summary>
-        <label for="course-glossary" style="margin-top:12px">One term per line: source term = English term</label>
-        <textarea id="course-glossary" rows="4" maxlength="8000" placeholder="jaringan komputer = computer network&#10;tektokan = back-and-forth conversation"></textarea>
-        <p class="muted small" style="margin:0">Up to 40 total terms including the preset. Add an entry to override its translation. Choose Custom glossary only to replace all preset terms. Terms also apply to unambiguous reverse questions.</p></details>
       <button id="start" class="primary big">Start lecture</button>
       <p id="status" class="status" role="status" aria-live="polite" style="text-align:center"></p>
       <details class="advanced"><summary>Advanced</summary>
@@ -75,7 +65,6 @@
   <script src="js/api.js"></script>
   <script src="js/attendance.js"></script>
   <script src="vendor/qrcode.js"></script>
-  <script src="js/course-profiles.js"></script>
   <script src="js/course-materials.js"></script>
   <script src="js/teacher.js"></script>
 </body>

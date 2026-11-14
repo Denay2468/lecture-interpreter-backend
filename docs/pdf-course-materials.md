@@ -1,5 +1,7 @@
 # Automatic PDF course context
 
+Current behavior: PDF passages remain context hints; automatic whole-lecture catalog replacements and lecturer preset controls were removed. See [background-context.md](background-context.md) for the optional topic analyzer.
+
 On teacher.html, section 3 accepts up to 10 PDF modules of 10 MiB each (UI: 10 MB).
 Selecting files starts processing automatically; the lecturer does not need to
 approve extracted terms. Start lecture is guarded until processing finishes.

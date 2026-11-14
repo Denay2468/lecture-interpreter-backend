@@ -1,5 +1,7 @@
 # Department and course presets
 
+Historical UI documentation: the lecturer preset controls were removed in the background-context update. See [background-context.md](background-context.md). Catalog data and legacy API support remain internal.
+
 Choose a department, then a course in lecturer section 3. Terms and subject context apply automatically when the next lecture starts; viewing terminology is optional. These are starter categories, not an official university curriculum. Presets currently support Indonesian input with English translation. PDF context remains available for other input languages.
 
 | Department | Starter courses |

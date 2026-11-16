@@ -1,3 +1,0 @@
-source: 'ramai'
-translated: 'crowded'
-state: delivered

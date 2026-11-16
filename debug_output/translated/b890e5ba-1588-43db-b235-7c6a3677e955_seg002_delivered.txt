@@ -1,3 +1,0 @@
-source: 'saya 20 tahun saya'
-translated: "I'm 20 years old. I"
-state: delivered

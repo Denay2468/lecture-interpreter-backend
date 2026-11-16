@@ -1,3 +1,0 @@
-source: 'ya jaga wah kok dari mana'
-translated: 'Yeah, be careful—wait, where did that come from?'
-state: delivered

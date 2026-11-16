@@ -1,3 +1,0 @@
-source: 'Ah'
-translated: 'Ah'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'Halo,'
-translated: 'Hello,'
-state: delivered

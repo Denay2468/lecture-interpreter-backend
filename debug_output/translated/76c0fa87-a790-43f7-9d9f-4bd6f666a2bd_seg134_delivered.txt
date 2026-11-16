@@ -1,3 +1,0 @@
-source: 'warnanya bagus banget ya'
-translated: "The color is really nice, isn't it?"
-state: delivered

@@ -1,3 +1,0 @@
-source: 'Finally.'
-translated: 'Finally.'
-state: delivered

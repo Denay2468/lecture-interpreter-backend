@@ -1,3 +1,0 @@
-source: 'Ya itulah perkocjang sembilan, rak.'
-translated: "Yeah, that's the nine-step dance, man."
-state: delivered

@@ -1,3 +1,0 @@
-source: 'ini haknya berapa'
-translated: 'How much is he entitled to?'
-state: delivered

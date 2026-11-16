@@ -1,3 +1,0 @@
-source: 'Meter sekitar 3 cm saja'
-translated: "It's only about 3 cm long"
-state: delivered

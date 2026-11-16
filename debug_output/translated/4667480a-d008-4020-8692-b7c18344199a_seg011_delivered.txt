@@ -1,3 +1,0 @@
-source: 'jadi'
-translated: 'so'
-state: delivered

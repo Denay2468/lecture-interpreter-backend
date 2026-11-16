@@ -1,3 +1,0 @@
-source: 'Kenapa ada bagian latar belakang Ini logika masalah solusi yang selalu dicari dosen.'
-translated: 'Why is there a "Background" section? This is the logic behind the problem and its solution—something professors are always looking for.'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'harga dari pemasoknya'
-translated: "the supplier's price"
-state: delivered

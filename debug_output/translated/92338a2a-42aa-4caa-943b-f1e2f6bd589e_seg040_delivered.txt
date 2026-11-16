@@ -1,3 +1,0 @@
-source: 'Ini penting nih Project'
-translated: 'This is an important project'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'Makanya API Image'
-translated: "That's why the Image API"
-state: delivered

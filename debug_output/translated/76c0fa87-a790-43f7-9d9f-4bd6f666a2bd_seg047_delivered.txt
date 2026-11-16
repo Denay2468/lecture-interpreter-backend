@@ -1,3 +1,0 @@
-source: 'Ini hakannya berapa'
-translated: 'How much is this?'
-state: delivered

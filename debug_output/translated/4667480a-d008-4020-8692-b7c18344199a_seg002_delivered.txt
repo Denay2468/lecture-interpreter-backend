@@ -1,3 +1,0 @@
-source: 'mereka udah ngejelasin 10 Project kita emang nggak ikut'
-translated: 'They’ve already explained the 10 projects—we’re not participating, after all.'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'Yang main chat saya.'
-translated: 'The one who messaged me.'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'kamu pengen curhat'
-translated: 'Do you want to vent?'
-state: delivered

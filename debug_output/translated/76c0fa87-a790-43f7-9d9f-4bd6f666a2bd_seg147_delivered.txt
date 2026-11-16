@@ -1,3 +1,0 @@
-source: 'harga dari pemasok nya naik'
-translated: "The supplier's prices have gone up"
-state: delivered

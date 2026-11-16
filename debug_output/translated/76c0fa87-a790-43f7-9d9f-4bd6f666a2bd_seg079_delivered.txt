@@ -1,3 +1,0 @@
-source: 'Mau pinjam tangga sebentar?'
-translated: 'Can I borrow your ladder for a moment?'
-state: delivered

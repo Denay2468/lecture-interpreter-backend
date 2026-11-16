@@ -1,3 +1,0 @@
-source: 'Apakah kamu bisa bahasa English'
-translated: 'Do you speak English?'
-state: delivered

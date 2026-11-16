@@ -1,3 +1,0 @@
-source: 'Jadi kami ngebikin kayak'
-translated: 'So we made something like'
-state: delivered

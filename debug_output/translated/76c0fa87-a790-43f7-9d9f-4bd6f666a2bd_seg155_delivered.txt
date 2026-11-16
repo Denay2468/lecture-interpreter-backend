@@ -1,3 +1,0 @@
-source: 'gimana'
-translated: 'How about it?'
-state: delivered

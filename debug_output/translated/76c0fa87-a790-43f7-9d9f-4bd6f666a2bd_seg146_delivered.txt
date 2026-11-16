@@ -1,3 +1,0 @@
-source: 'ia Mbak'
-translated: "Yes, Ma'am"
-state: delivered

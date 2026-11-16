@@ -1,3 +1,0 @@
-source: 'Permisi Pak'
-translated: 'Excuse me, sir'
-state: delivered

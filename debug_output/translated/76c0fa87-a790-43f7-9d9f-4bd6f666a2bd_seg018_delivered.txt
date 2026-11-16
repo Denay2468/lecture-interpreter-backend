@@ -1,3 +1,0 @@
-source: 'Jam berapa jam 3 lewat 2+ menit'
-translated: "What time is it? It's 3 o'clock and 2+ minutes past."
-state: delivered

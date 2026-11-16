@@ -1,3 +1,0 @@
-source: 'aktif'
-translated: 'active'
-state: delivered

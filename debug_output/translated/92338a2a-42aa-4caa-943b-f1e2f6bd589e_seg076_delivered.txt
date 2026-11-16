@@ -1,3 +1,0 @@
-source: 'Ya konflik.'
-translated: 'Yes, conflict.'
-state: delivered

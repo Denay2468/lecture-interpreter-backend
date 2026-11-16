@@ -1,3 +1,0 @@
-source: 'apa'
-translated: 'what'
-state: delivered

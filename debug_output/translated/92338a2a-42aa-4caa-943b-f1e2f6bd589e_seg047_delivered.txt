@@ -1,3 +1,0 @@
-source: 'aku belum selesai'
-translated: "I'm not done yet"
-state: delivered

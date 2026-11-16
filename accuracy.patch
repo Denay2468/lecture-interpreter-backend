@@ -1,0 +1,406 @@
+From 0619ad4cb7d1e4009d15dadb1297c73ea7d78bab Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 13 Nov 2026 19:31:39 +0700
+Subject: [PATCH] Preserve lecture context and technical phrase boundaries in
+ translation
+
+---
+ app/phrase_boundary.py             | 25 ++++++++
+ app/segmentation.py                |  8 +--
+ app/slang.py                       |  9 ++-
+ app/translation_pipeline.py        | 34 +++++++---
+ docs/translation-accuracy.md       | 56 +++++++++++++++++
+ tools/test_classroom_streaming.py  |  9 ++-
+ tools/test_translation_accuracy.py | 99 ++++++++++++++++++++++++++++++
+ 7 files changed, 221 insertions(+), 19 deletions(-)
+ create mode 100644 app/phrase_boundary.py
+ create mode 100644 docs/translation-accuracy.md
+ create mode 100644 tools/test_translation_accuracy.py
+
+diff --git a/app/phrase_boundary.py b/app/phrase_boundary.py
+new file mode 100644
+index 0000000..d26289e
+--- /dev/null
++++ b/app/phrase_boundary.py
+@@ -0,0 +1,25 @@
++"""Conservative guards for early cuts; actual pauses/hard limits still flush."""
++import re
++
++# These words generally need a complement. Do not discard or rewrite them.
++_OPEN_ENDINGS = frozenset('''tidak bukan belum jangan sangat terlalu dan atau
++yang di ke dari nggak enggak ngga gak ga ndak tanpa dengan karena kalau kalo
++agar supaya lebih kurang not no never without very the a an and or to of
++because if than muy de el la'''.split())
++
++
++def incomplete_phrase(text, glossary=()):
++    words = re.findall(r"\w+", text.casefold())
++    if not words:
++        return False
++    if words[-1] in _OPEN_ENDINGS:
++        return True
++    # Consider both lecture and question directions. An exact completed term
++    # is fine, but a suffix such as 'jaringan' before 'saraf' should wait.
++    for pair in glossary:
++        for term in pair:
++            tokens = re.findall(r"\w+", term.casefold())
++            for count in range(1, min(len(tokens), len(words) + 1)):
++                if words[-count:] == tokens[:count]:
++                    return True
++    return False
+diff --git a/app/segmentation.py b/app/segmentation.py
+index fd80a48..2d2097e 100644
+--- a/app/segmentation.py
++++ b/app/segmentation.py
+@@ -39,6 +39,7 @@ from pathlib import Path
+ from typing import Awaitable, Callable, Optional, Union
+ 
+ from .config import Config
++from .phrase_boundary import incomplete_phrase
+ 
+ logger = logging.getLogger("segmentation")
+ 
+@@ -238,11 +239,7 @@ class Segmenter:
+             return
+         # Avoid ending on common connectors/negations. This is a heuristic,
+         # not a claim that arbitrary short phrases are semantically complete.
+-        if words[-1].strip(".,!?;:") in {
+-            "tidak", "bukan", "belum", "jangan", "sangat", "terlalu", "dan",
+-            "atau", "yang", "di", "ke", "dari", "not", "very", "the", "a",
+-            "and", "or", "to", "of", "no", "muy", "de", "el", "la",
+-        }:
++        if incomplete_phrase(transcript, self._cfg.course_glossary):
+             return
+         self._last_finalize_ms = now
+         self._finalize_pending = True
+@@ -276,6 +273,7 @@ class Segmenter:
+             await self._close_segment(trigger="speech_final")
+         elif (event == "results" and is_final and transcript
+               and self._cfg.incremental_phrases_enabled
++              and not incomplete_phrase(" ".join(self._current_transcript_parts), self._cfg.course_glossary)
+               and len(" ".join(self._current_transcript_parts).split()) >= self._cfg.phrase_target_words):
+             # Commit only finalized STT text, never mutable interim hypotheses.
+             await self._close_segment(trigger="stable_phrase")
+diff --git a/app/slang.py b/app/slang.py
+index 3dca448..285a095 100644
+--- a/app/slang.py
++++ b/app/slang.py
+@@ -12,6 +12,9 @@ WORDS = {
+     "ndak": "tidak", "kalo": "kalau", "sampe": "sampai",
+     "aja": "saja", "makasih": "terima kasih", "mikir": "berpikir",
+     "nyari": "mencari", "pake": "pakai", "cuman": "hanya",
++    "cuma": "hanya", "ngitung": "menghitung", "ngubah": "mengubah",
++    "ngirim": "mengirim", "nyimpen": "menyimpan", "ngecek": "memeriksa",
++    "ngapus": "menghapus", "nentuin": "menentukan",
+     "ngebug": "mengalami kesalahan perangkat lunak",
+     "gua": "saya", "gue": "saya", "lu": "kamu", "lo": "kamu",
+ }
+@@ -26,4 +29,8 @@ def normalize_indonesian(text):
+             return word
+         replacement = WORDS[word.lower()]
+         return replacement.capitalize() if word[0].isupper() else replacement
+-    return _PATTERN.sub(replace, text)
++    # Lecturers often dictate/show inline code. Never rewrite identifiers or
++    # literals explicitly enclosed in backticks (including an unclosed span).
++    parts = re.split(r"(`[^`]*(?:`|$))", text)
++    return "".join(part if part.startswith('`') else _PATTERN.sub(replace, part)
++                   for part in parts)
+diff --git a/app/translation_pipeline.py b/app/translation_pipeline.py
+index 49d6b08..07fb100 100644
+--- a/app/translation_pipeline.py
++++ b/app/translation_pipeline.py
+@@ -83,9 +83,10 @@ class TranslationHTTPClient:
+         self.mt_characters = 0
+         self.tts_characters = 0
+ 
+-    async def translate(self, text: str, source_lang: str = "ID", target_lang: str = "EN-US") -> str:
++    async def translate(self, text: str, source_lang: str = "ID", target_lang: str = "EN-US", *, context: str = "") -> str:
+         if self._closed:
+             raise RuntimeError("translation HTTP client is closed")
++        source_lang, target_lang = source_lang.upper(), target_lang.upper()
+         if source_lang.split("-")[0] == target_lang.split("-")[0]:
+             return text
+         if not self._cfg.deepl_api_key:
+@@ -108,8 +109,11 @@ class TranslationHTTPClient:
+             else:
+                 protected = normalize_indonesian(protected)
+         payload = {"text": protected, "source_lang": source_lang, "target_lang": target_lang}
+-        if self._cfg.course_context:
+-            payload["context"] = self._cfg.course_context
++        # Context is a hint, not extra text to translate/speak. Keep it bounded
++        # and use the same snapshot on retries (not worker completion order).
++        translation_context = "\n".join(filter(None, (self._cfg.course_context, context[-1500:])))
++        if translation_context:
++            payload["context"] = translation_context
+         if tagged:
+             payload.update(tag_handling="xml", ignore_tags="blbterm")
+         self.mt_characters += len(text)
+@@ -303,11 +307,12 @@ class TranslationQueue:
+         self._on_translated = on_translated or self._default_debug_sink
+         self._on_stream = on_stream
+         self._http = TranslationHTTPClient(cfg)
+-        self._translate_fn = translate_fn or (lambda text: self._http.translate(text, source_lang=cfg.segmentation_language.upper()))
++        self._translate_fn = translate_fn
++        self._source_history = ""
+         self._ready_times = {}
+         self._synthesize_fn = synthesize_fn or self._http.synthesize
+ 
+-        self._queue: asyncio.Queue[tuple[Segment, float]] = asyncio.Queue()
++        self._queue: asyncio.Queue[tuple[Segment, float, str]] = asyncio.Queue()
+         self._worker_tasks: list[asyncio.Task] = []
+ 
+         self.segments_delivered = 0
+@@ -326,10 +331,15 @@ class TranslationQueue:
+         """Wired as Segmenter's on_segment callback. Non-blocking — a
+         full teacher-audio-length backlog is accepted, per Rule 6."""
+         now = time.monotonic()
++        # Capture before the first await: parallel workers must never see
++        # future phrases or another classroom's transcript as context.
++        context = self._source_history
++        if segment.transcript.strip():
++            self._source_history = (context + "\n" + segment.transcript.strip()).strip()[-1500:]
+         self._ready_times[segment.sequence] = now
+         if self._on_stream:
+             await self._on_stream(segment.sequence, {"type": "open", "ready_at": now})
+-        await self._queue.put((segment, now))
++        await self._queue.put((segment, now, context))
+ 
+     async def stop(self) -> None:
+         # Let already-enqueued segments finish processing rather than
+@@ -353,6 +363,7 @@ class TranslationQueue:
+                 pass
+ 
+         await self._http.close()
++        self._source_history = ""
+ 
+         logger.info(
+             "Translation queue stopped for session %s (delivered=%d skipped=%d)",
+@@ -361,12 +372,12 @@ class TranslationQueue:
+ 
+     async def _worker_loop(self) -> None:
+         while True:
+-            segment, enqueued = await self._queue.get()
++            segment, enqueued, context = await self._queue.get()
+             started = time.monotonic()
+             logger.info("latency session=%s sequence=%d stage=queue_wait elapsed_ms=%.1f depth=%d",
+                         self._session_id, segment.sequence, (started - enqueued) * 1000, self._queue.qsize())
+             try:
+-                await self._process_segment(segment)
++                await self._process_segment(segment, context)
+             except Exception:
+                 # A downstream callback must not permanently kill a worker.
+                 logger.exception("Session %s segment #%d delivery failed", self._session_id, segment.sequence)
+@@ -381,7 +392,7 @@ class TranslationQueue:
+                             self._session_id, segment.sequence, (time.monotonic() - started) * 1000)
+                 self._queue.task_done()
+ 
+-    async def _process_segment(self, segment: Segment) -> None:
++    async def _process_segment(self, segment: Segment, context: str = "") -> None:
+         if not segment.transcript:
+             # A silence/noise segment with nothing recognized. Still
+             # emit a result (state="skipped", error=None) rather than
+@@ -404,7 +415,10 @@ class TranslationQueue:
+ 
+         deadline = time.monotonic() + self._cfg.translation_segment_timeout_s
+         translated_text, mt_error = await self._attempt_with_retry(
+-            lambda: self._translate_fn(segment.transcript), stage="MT", deadline=deadline,
++            lambda: (self._translate_fn(segment.transcript) if self._translate_fn else
++                     self._http.translate(segment.transcript,
++                                          source_lang=self._cfg.segmentation_language.upper(), context=context)),
++            stage="MT", deadline=deadline,
+         )
+         if mt_error:
+             await self._emit(self._skipped_result(segment, stage="MT", error=mt_error))
+diff --git a/docs/translation-accuracy.md b/docs/translation-accuracy.md
+new file mode 100644
+index 0000000..3dc7947
+--- /dev/null
++++ b/docs/translation-accuracy.md
+@@ -0,0 +1,56 @@
++# Translation accuracy update
++
++Short chunks need context. Each lecturer segment now carries a snapshot of up
++to 1,500 characters of preceding finalized source speech to DeepL's `context`
++parameter, alongside the selected course context. Only the current segment is
++translated and spoken. Snapshots are captured at enqueue time so concurrent
++workers and retries cannot accidentally use later speech. History is scoped
++to a lecture queue, is cleared on shutdown, and is not reused for student
++questions or another classroom.
++
++Early finalization and size-based cuts now wait when a phrase ends in a
++negation/connector (including Indonesian slang) or a partial glossary term,
++for example `jaringan` before `saraf`. Real pauses and existing hard limits
++still flush, so this does not indefinitely withhold speech. This is a heuristic,
++not a grammar model: a pause mid-term can still split it. Waiting for a useful
++phrase may add delay; 2–5 words of listener lag is not guaranteed.
++
++Common informal Indonesian IT verbs are normalized before translation.
++Explicit glossary overrides still take precedence. Acronyms and backtick code
++spans are preserved during slang normalization. Original captions are not
++rewritten. English student questions keep the existing reverse glossary; they
++do not inherit another student's question history.
++
++No new API, key, package, or .env setting is required. Restart the backend.
++Select the appropriate IT course on the lecturer page and add exact technical
++term overrides where needed.
++
++## Verification
++
++Offline regressions check source order under two workers, retry consistency,
++classroom isolation, bounded history, language routing, glossary protection,
++and negation/term boundaries. These tests prove code behavior, not linguistic
++accuracy of live Deepgram/DeepL output.
++
++Run:
++
++```powershell
++python -m unittest tools.test_translation_accuracy tools.test_course_profiles tools.test_classroom_streaming tools.test_phrase_finalize -v
++```
++
++For a measured comparison, use the same recording before and after this update:
++20 Indonesian IT sentences, including negation, slang, code-switching and terms
++such as `jaringan saraf`, `kunci primer`, and `kehilangan paket`. Repeat in quiet
++and cafe noise. Record expected speech, actual source caption, translation,
++technical-term errors and meaning/negation errors separately. Have a bilingual
++reviewer score the outputs without knowing which version generated them; also
++measure median/p95 time from phrase end to the first audible translated sample.
++Do not report an accuracy percentage or latency improvement without these runs.
++
++If the source caption is already wrong, capture/microphone placement and STT
++need investigation: this change does not recover speech hidden by background
++noise or replace the recognition model. If the source is correct but translation
++is wrong, save that example with the selected course and glossary for regression
++testing. PDF ingestion is a separate feature and is not included here.
++
++Provider reference: https://github.com/DeepL/api-docs/blob/main/docs/customize/overview.mdx
+diff --git a/tools/test_classroom_streaming.py b/tools/test_classroom_streaming.py
+index cd8193e..50648b8 100644
+--- a/tools/test_classroom_streaming.py
++++ b/tools/test_classroom_streaming.py
+@@ -157,12 +157,15 @@ class StreamTests(unittest.IsolatedAsyncioTestCase):
+         self.assertIsNone(client._session)
+     async def test_language_routing_both_directions(self):
+         for lang,target in [('id','ID'),('zh','ZH-HANS'),('ja','JA'),('es','ES')]:
+-            q=TranslationQueue(Config(segmentation_language=lang),'s')
++            async def synthesize(text): return b'audio'
++            q=TranslationQueue(Config(segmentation_language=lang),'s',
++                               on_translated=lambda _: None, synthesize_fn=synthesize)
+             calls=[]
+-            async def translate(text,source_lang='ID',target_lang='EN-US'):
++            async def translate(text,source_lang='ID',target_lang='EN-US', **kwargs):
+                 calls.append((source_lang,target_lang)); return text
+             q._http.translate=translate
+-            await q._translate_fn('test'); await q.translate_question('question')
++            await q._process_segment(Segment('s', 0, b'', 'test', 'speech_final', 1))
++            await q.translate_question('question')
+             self.assertEqual(calls,[(lang.upper(),'EN-US'),('EN',target)])
+ 
+ class TransportTests(unittest.IsolatedAsyncioTestCase):
+diff --git a/tools/test_translation_accuracy.py b/tools/test_translation_accuracy.py
+new file mode 100644
+index 0000000..9d4e6c8
+--- /dev/null
++++ b/tools/test_translation_accuracy.py
+@@ -0,0 +1,99 @@
++"""Regression tests for context/phrase handling, not a provider accuracy score."""
++import asyncio
++import unittest
++from unittest.mock import AsyncMock, patch
++from app.config import Config
++from app.segmentation import Segment, Segmenter
++from app.slang import normalize_indonesian
++from app.translation_pipeline import TranslationHTTPClient, TranslationQueue
++from tools.test_course_profiles import Session
++
++
++class Boundaries(unittest.IsolatedAsyncioTestCase):
++    async def test_early_cut_keeps_negation_and_technical_term_together(self):
++        output = []
++        cfg = Config(course_glossary=(('jaringan saraf', 'neural network'),))
++        seg = Segmenter(cfg, 's', output.append)
++        seg._dg_connection = type('Socket', (), {'send_finalize': AsyncMock()})()
++        for text in ['hari ini kita memakai jaringan', 'komputer ini ternyata nggak']:
++            await seg._maybe_finalize_phrase(text)
++            await seg._maybe_finalize_phrase(text)
++        seg._dg_connection.send_finalize.assert_not_awaited()
++        await seg._on_stt_event('results', 'hari ini kita memakai jaringan', True)
++        self.assertEqual(output, [])
++        await seg._on_stt_event('results', 'saraf', True)
++        self.assertEqual(output[0].transcript, 'hari ini kita memakai jaringan saraf')
++        await seg._on_stt_event('results', 'komputer ini ternyata nggak', True)
++        self.assertEqual(len(output), 1)
++        await seg._on_stt_event('results', 'mahal', True)
++        self.assertEqual(output[1].transcript, 'komputer ini ternyata nggak mahal')
++
++    async def test_real_pause_still_flushes_incomplete_phrase(self):
++        output = []
++        seg = Segmenter(Config(), 's', output.append)
++        await seg._on_stt_event('results', 'komputer ini ternyata tidak', True, True)
++        self.assertEqual(output[0].transcript, 'komputer ini ternyata tidak')
++
++    def test_slang_preserves_code_and_acronyms(self):
++        self.assertEqual(normalize_indonesian('Gua ngecek `pake` dan GA, bukan ngapus.'),
++                         'Saya memeriksa `pake` dan GA, bukan menghapus.')
++        self.assertEqual(normalize_indonesian('cek `gua belum selesai'), 'cek `gua belum selesai')
++
++
++class Context(unittest.IsolatedAsyncioTestCase):
++    async def test_payload_does_not_translate_context_or_override_terms(self):
++        session = Session()
++        with patch('app.translation_pipeline.aiohttp.ClientSession', return_value=session):
++            client = TranslationHTTPClient(Config(deepl_api_key='fake', course_context='Kuliah IT.',
++                                                  course_glossary=(('ngecek', 'validate'),)))
++            output = await client.translate('Gua ngecek paket.', 'id', 'en-us', context='Kita membahas jaringan.')
++            self.assertEqual(output, 'Saya validate paket.')
++            self.assertEqual(session.calls[0]['context'], 'Kuliah IT.\nKita membahas jaringan.')
++            self.assertNotIn('membahas', session.calls[0]['text'])
++            self.assertEqual(client.mt_characters, len('Gua ngecek paket.'))
++            await client.close()
++
++    async def test_parallel_workers_retry_same_prior_context_and_isolate_questions(self):
++        calls = []
++        first_started, release_first = asyncio.Event(), asyncio.Event()
++        async def translate(text, **kwargs):
++            calls.append((text, kwargs.get('context', '')))
++            if text == 'pertama' and calls.count(('pertama', '')) == 1:
++                first_started.set()
++                await release_first.wait()
++                raise TimeoutError()
++            if text == 'kedua':
++                release_first.set()
++            return text
++        cfg = Config(translation_num_workers=2)
++        q = TranslationQueue(cfg, 'a', on_translated=lambda _: None,
++                             synthesize_fn=AsyncMock(return_value=b'audio'))
++        q._http.translate = translate
++        other = TranslationQueue(cfg, 'b', on_translated=lambda _: None)
++        q.start()
++        try:
++            await q.enqueue(Segment('a', 0, b'', 'pertama', 'speech_final', 1))
++            await asyncio.wait_for(first_started.wait(), 1)
++            await q.enqueue(Segment('a', 1, b'', 'kedua', 'speech_final', 1))
++            await asyncio.wait_for(q._queue.join(), 2)
++            await q.translate_question('Why?')
++            self.assertEqual(calls, [('pertama', ''), ('kedua', 'pertama'), ('pertama', ''), ('Why?', '')])
++            self.assertEqual(other._source_history, '')
++            self.assertEqual(q.segments_delivered, 2)
++        finally:
++            release_first.set()
++            await q.stop()
++            await other.stop()
++        self.assertEqual(q._source_history, '')
++
++    async def test_context_bounded_and_silence_does_not_erase_history(self):
++        q = TranslationQueue(Config(), 's')
++        for seq, text in enumerate(['x' * 2000, '', 'terakhir']):
++            await q.enqueue(Segment('s', seq, b'', text, 'speech_final', 1))
++        items = [q._queue.get_nowait() for _ in range(3)]
++        self.assertEqual(items[0][2], '')
++        self.assertEqual(items[1][2], 'x' * 1500)
++        self.assertEqual(items[2][2], 'x' * 1500)
++        self.assertLessEqual(len(q._source_history), 1500)
++        for _ in items: q._queue.task_done()
++        await q.stop()
+-- 
+2.52.0
+

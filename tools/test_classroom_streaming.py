@@ -157,12 +157,15 @@ class StreamTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(client._session)
     async def test_language_routing_both_directions(self):
         for lang,target in [('id','ID'),('zh','ZH-HANS'),('ja','JA'),('es','ES')]:
-            q=TranslationQueue(Config(segmentation_language=lang),'s')
+            async def synthesize(text): return b'audio'
+            q=TranslationQueue(Config(segmentation_language=lang),'s',
+                               on_translated=lambda _: None, synthesize_fn=synthesize)
             calls=[]
-            async def translate(text,source_lang='ID',target_lang='EN-US'):
+            async def translate(text,source_lang='ID',target_lang='EN-US', **kwargs):
                 calls.append((source_lang,target_lang)); return text
             q._http.translate=translate
-            await q._translate_fn('test'); await q.translate_question('question')
+            await q._process_segment(Segment('s', 0, b'', 'test', 'speech_final', 1))
+            await q.translate_question('question')
             self.assertEqual(calls,[(lang.upper(),'EN-US'),('EN',target)])
 
 class TransportTests(unittest.IsolatedAsyncioTestCase):

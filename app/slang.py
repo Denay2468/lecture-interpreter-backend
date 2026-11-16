@@ -12,6 +12,9 @@ WORDS = {
     "ndak": "tidak", "kalo": "kalau", "sampe": "sampai",
     "aja": "saja", "makasih": "terima kasih", "mikir": "berpikir",
     "nyari": "mencari", "pake": "pakai", "cuman": "hanya",
+    "cuma": "hanya", "ngitung": "menghitung", "ngubah": "mengubah",
+    "ngirim": "mengirim", "nyimpen": "menyimpan", "ngecek": "memeriksa",
+    "ngapus": "menghapus", "nentuin": "menentukan",
     "ngebug": "mengalami kesalahan perangkat lunak",
     "gua": "saya", "gue": "saya", "lu": "kamu", "lo": "kamu",
 }
@@ -26,4 +29,8 @@ def normalize_indonesian(text):
             return word
         replacement = WORDS[word.lower()]
         return replacement.capitalize() if word[0].isupper() else replacement
-    return _PATTERN.sub(replace, text)
+    # Lecturers often dictate/show inline code. Never rewrite identifiers or
+    # literals explicitly enclosed in backticks (including an unclosed span).
+    parts = re.split(r"(`[^`]*(?:`|$))", text)
+    return "".join(part if part.startswith('`') else _PATTERN.sub(replace, part)
+                   for part in parts)

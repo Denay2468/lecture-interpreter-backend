@@ -38,11 +38,12 @@
   }
 
   async function raw(method, path, body, token, asText) {
-    const headers = { "Content-Type": "application/json" };
+    const multipart = typeof root.FormData !== "undefined" && body instanceof root.FormData;
+    const headers = multipart ? {} : { "Content-Type": "application/json" };
     if (token) headers.Authorization = "Bearer " + token;
     let res;
     try {
-      res = await root.fetch(apiBase() + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+      res = await root.fetch(apiBase() + path, { method, headers, body: body === undefined ? undefined : multipart ? body : JSON.stringify(body) });
     } catch (e) {
       throw new ApiError(0, "Couldn't reach the server. Is it running, and is the address right?");
     }
@@ -108,6 +109,7 @@
     },
     get: (path) => authed("GET", path),
     post: (path, body) => authed("POST", path, body === undefined ? {} : body),
+    upload: (path, form) => authed("POST", path, form),
     patch: (path, body) => authed("PATCH", path, body),
     download: (path) => authed("GET", path, undefined, true), // a file (text), e.g. the attendance CSV
   };

@@ -249,3 +249,8 @@ question after partial playback. Already heard audio cannot be retracted.
 Short-phrase translation and playback backlog require live quality/latency tests;
 2–5-word lag is a target, not a guarantee. Disable incremental phrases to restore
 the original release-based question pipeline with its batch STT fallback.
+
+
+### IT course terminology
+
+Lecturers can select one of six Indonesian-to-English IT course presets, review its 24 starter terms, and add per-session overrides. Unambiguous terms also apply to English student questions translated back to Indonesian. See [setup, limits and offline tests](docs/it-course-glossary.md).

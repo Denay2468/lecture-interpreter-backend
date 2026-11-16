@@ -22,10 +22,13 @@
       </section>
       <section class="card"><h2>2. Language you speak</h2>
         <select id="source-language" aria-label="Language spoken by the lecturer" style="margin:0"><option value="id">Indonesian</option><option value="en">English</option><option value="zh">Mandarin Chinese</option><option value="ja">Japanese</option><option value="es">Spanish</option></select></section>
-      <details class="card"><summary>Course glossary (optional)</summary>
-        <label for="course-glossary" style="margin-top:12px">One term per line: source term = English term</label>
-        <textarea id="course-glossary" rows="4" maxlength="8000" placeholder="jaringan komputer = computer network&#10;tektokan = back-and-forth conversation"></textarea>
-        <p class="muted small" style="margin:0">Up to 40 terms. Exact phrases are protected during translation.</p></details>
+      <section class="card"><h2>3. Lecture materials</h2>
+        <label for="course-pdfs">PDF modules for this lecture</label>
+        <input id="course-pdfs" type="file" accept=".pdf,application/pdf" multiple>
+        <p id="materials-status" class="muted small" role="status" aria-live="polite"></p>
+        <ul id="materials-list" style="padding-left:20px"></ul>
+        <button id="materials-clear" type="button" class="secondary" hidden>Clear modules</button>
+      </section>
       <button id="start" class="primary big">Start lecture</button>
       <p id="status" class="status" role="status" aria-live="polite" style="text-align:center"></p>
       <details class="advanced"><summary>Advanced</summary>
@@ -59,6 +62,7 @@
   <script src="js/api.js"></script>
   <script src="js/attendance.js"></script>
   <script src="vendor/qrcode.js"></script>
+  <script src="js/course-materials.js"></script>
   <script src="js/teacher.js"></script>
 </body>
 </html>

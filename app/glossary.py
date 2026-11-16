@@ -50,3 +50,17 @@ def unprotect(text):
     # Fail visibly if the provider damages the XML instead of speaking markup.
     root = ET.fromstring(text)
     return "".join(root.itertext())
+
+
+def directional_pairs(pairs, source_lang, target_lang, lecture_language):
+    """Only use the glossary in its lecture pair; omit ambiguous reverse terms."""
+    source, target = source_lang.split('-')[0].upper(), target_lang.split('-')[0].upper()
+    lecture = lecture_language.split('-')[0].upper()
+    if source == lecture and target == 'EN':
+        return pairs
+    if source != 'EN' or target != lecture:
+        return ()
+    groups = {}
+    for original, english in pairs:
+        groups.setdefault(english.casefold(), []).append((english, original))
+    return tuple(entries[0] for entries in groups.values() if len(entries) == 1)

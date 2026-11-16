@@ -51,7 +51,8 @@ from .lifecycle import SessionLifecycle
 from .protocol import encode_playback_frame
 from .session import SessionCoordinator
 from .classroom import Classroom
-from .glossary import parse_glossary
+from .course_profiles import resolve_course_glossary
+from .materials import validate_materials, index_materials, automatic_terms
 
 logger = logging.getLogger("server")
 
@@ -106,7 +107,9 @@ class Server:
                 settings = json.loads(message)
                 if not isinstance(settings, dict) or settings.get("type") != "configure_lecture":
                     raise ValueError("Invalid lecture configuration")
-                params = dict(params, glossary=[settings.get("glossary", "")])
+                params = dict(params, glossary=[settings.get("glossary", "")],
+                              course_profile=[settings.get("course_profile", "")],
+                              materials=[settings.get("materials", [])])
             except (ValueError, TypeError, asyncio.TimeoutError):
                 await self._reject(websocket, CLOSE_BAD_REQUEST, "Invalid lecture configuration")
                 return
@@ -115,11 +118,16 @@ class Server:
             await self._reject(websocket, CLOSE_BAD_REQUEST, "Unsupported language pair")
             return
         try:
-            glossary = parse_glossary(params.get("glossary", [""])[0])
+            glossary, course_context = resolve_course_glossary(
+                params.get("course_profile", [""])[0], params.get("glossary", [""])[0], source)
+            documents = validate_materials(params.get("materials", [[]])[0])
+            # PDF excerpts provide context; do not force a fixed vocabulary
+            # for the whole lecture when the speaker may change topics.
         except ValueError as exc:
             await self._reject(websocket, CLOSE_BAD_REQUEST, str(exc))
             return
-        lecture_cfg = replace(self._cfg, segmentation_language=source, course_glossary=glossary)
+        lecture_cfg = replace(self._cfg, segmentation_language=source, course_glossary=glossary,
+                              course_context=course_context, material_passages=index_materials(documents))
         if self._db is None:
             active = self._active[LEGACY_KEY]
             if active.coordinator.teacher_connected or active.starting:
@@ -351,7 +359,7 @@ class Server:
             await self._lifecycle.recover_on_startup()
             self._lifecycle.start_reaper()
         try:
-            async with websockets.serve(self._router, self._cfg.host, self._cfg.port, max_size=None):
+            async with websockets.serve(self._router, self._cfg.host, self._cfg.port, max_size=8 * 1024 * 1024):
                 logger.info("Listening on ws://%s:%d (%s)", self._cfg.host, self._cfg.port,
                             "multi-tenant, PostgreSQL" if self._db is not None else "single-session, no database")
                 logger.info("Teacher endpoint: /ws/teacher?room=<label>&token=<JWT>" if self._db is not None

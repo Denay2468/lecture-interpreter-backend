@@ -1,3 +1,0 @@
-source: 'ya berapa kilo'
-translated: 'Yeah, how many kilos?'
-state: delivered

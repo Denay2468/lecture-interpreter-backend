@@ -1,3 +1,0 @@
-source: 'wah'
-translated: 'Wow'
-state: delivered

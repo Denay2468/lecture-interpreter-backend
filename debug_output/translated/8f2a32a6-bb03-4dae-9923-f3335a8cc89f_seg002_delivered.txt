@@ -1,3 +1,0 @@
-source: 'Hello. Hello. Ah oke'
-translated: 'Hello. Hello. Oh, okay.'
-state: delivered

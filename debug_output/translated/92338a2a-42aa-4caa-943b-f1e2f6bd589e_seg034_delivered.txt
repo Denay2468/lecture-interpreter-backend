@@ -1,3 +1,0 @@
-source: 'Asik'
-translated: 'Cool'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'Apakah anda punya rekomendasi'
-translated: 'Do you have any recommendations?'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'ya supaya konco'
-translated: 'Yeah, so we can be friends'
-state: delivered

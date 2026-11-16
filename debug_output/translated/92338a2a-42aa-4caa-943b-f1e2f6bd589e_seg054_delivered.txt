@@ -1,3 +1,0 @@
-source: 'Time Star.'
-translated: 'Time Star.'
-state: delivered

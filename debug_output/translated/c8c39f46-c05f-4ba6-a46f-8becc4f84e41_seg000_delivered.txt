@@ -1,3 +1,0 @@
-source: 'Salda, Dugainna, oke di.'
-translated: 'Salda, Dugainna, okay.'
-state: delivered

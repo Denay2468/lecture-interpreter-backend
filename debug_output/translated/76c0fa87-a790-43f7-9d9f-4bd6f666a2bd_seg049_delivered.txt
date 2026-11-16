@@ -1,3 +1,0 @@
-source: 'private bahasa AVC'
-translated: 'private AVC language'
-state: delivered

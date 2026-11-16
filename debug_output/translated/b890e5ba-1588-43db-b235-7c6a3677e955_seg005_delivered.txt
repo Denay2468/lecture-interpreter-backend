@@ -1,3 +1,0 @@
-source: 'nama saya ini'
-translated: 'My name is'
-state: delivered

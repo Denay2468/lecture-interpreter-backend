@@ -1,3 +1,0 @@
-source: 'saya dari Nyemel'
-translated: "I'm from Nyemel"
-state: delivered

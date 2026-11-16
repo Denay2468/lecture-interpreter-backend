@@ -1,3 +1,0 @@
-source: 'tahan adsense'
-translated: 'AdSense-compatible'
-state: delivered

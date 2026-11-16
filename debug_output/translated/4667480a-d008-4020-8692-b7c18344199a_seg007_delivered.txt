@@ -1,3 +1,0 @@
-source: 'kita nggak terlalu search'
-translated: "We don't really search"
-state: delivered

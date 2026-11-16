@@ -1,3 +1,0 @@
-source: 'tentu'
-translated: 'of course'
-state: delivered

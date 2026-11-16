@@ -1,3 +1,0 @@
-source: 'sumpah'
-translated: 'oath'
-state: delivered

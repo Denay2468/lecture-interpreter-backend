@@ -1,3 +1,0 @@
-source: 'In the English?'
-translated: 'In English?'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'Siapakahmu?'
-translated: 'Who are you?'
-state: delivered

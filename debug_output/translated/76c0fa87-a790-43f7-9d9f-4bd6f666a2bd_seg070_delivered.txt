@@ -1,3 +1,0 @@
-source: 'lagi sibuk enggak Oh Ryan enggak kau'
-translated: "Are you busy right now? Oh, Ryan, no, you're not."
-state: delivered

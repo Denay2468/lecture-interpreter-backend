@@ -1,3 +1,0 @@
-source: 'kemarin masih dapat'
-translated: 'I still got some yesterday'
-state: delivered

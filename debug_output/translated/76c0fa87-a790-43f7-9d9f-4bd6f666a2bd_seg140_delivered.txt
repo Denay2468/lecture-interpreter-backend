@@ -1,3 +1,0 @@
-source: 'tomatnya 10.000 aja per kilo'
-translated: 'The tomatoes are only 10,000 per kilo.'
-state: delivered

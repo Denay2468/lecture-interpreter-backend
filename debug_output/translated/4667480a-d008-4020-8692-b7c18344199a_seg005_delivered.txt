@@ -1,3 +1,0 @@
-source: 'dari 10'
-translated: 'out of 10'
-state: delivered

@@ -1,3 +1,0 @@
-source: 'Di anjing?'
-translated: 'On a dog?'
-state: delivered

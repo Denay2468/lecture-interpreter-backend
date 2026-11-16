@@ -1,3 +1,0 @@
-source: 'Jadi, jadi kita udah mendengarkan 10 finalis'
-translated: "So, so we've heard from the 10 finalists"
-state: delivered

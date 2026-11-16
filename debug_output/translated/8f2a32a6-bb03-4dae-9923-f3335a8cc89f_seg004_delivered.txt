@@ -1,3 +1,0 @@
-source: 'nama saya Adi saya dari Nyema'
-translated: "My name is Adi. I'm from Nyema."
-state: delivered

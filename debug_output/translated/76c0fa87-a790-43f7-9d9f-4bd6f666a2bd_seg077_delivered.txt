@@ -1,3 +1,0 @@
-source: 'mau pinjam anda sebentar'
-translated: 'Can I borrow you for a moment?'
-state: delivered

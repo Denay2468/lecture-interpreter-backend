@@ -1,3 +1,0 @@
-source: 'nilainya sudah di main class'
-translated: 'The value is already in the main class'
-state: delivered

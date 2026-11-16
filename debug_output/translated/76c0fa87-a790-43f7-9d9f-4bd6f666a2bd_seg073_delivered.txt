@@ -1,3 +1,0 @@
-source: 'Riyaat'
-translated: 'Riyaat'
-state: delivered

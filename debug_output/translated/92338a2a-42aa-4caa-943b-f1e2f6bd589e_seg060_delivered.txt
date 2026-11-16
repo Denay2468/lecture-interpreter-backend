@@ -1,3 +1,0 @@
-source: 'Cari kalorinya satusatu.'
-translated: 'Count the calories one by one.'
-state: delivered

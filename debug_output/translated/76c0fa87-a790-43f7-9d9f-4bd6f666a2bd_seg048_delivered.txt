@@ -1,3 +1,0 @@
-source: 'saya punya'
-translated: 'I have'
-state: delivered

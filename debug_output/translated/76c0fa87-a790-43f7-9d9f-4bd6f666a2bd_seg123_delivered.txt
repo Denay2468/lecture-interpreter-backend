@@ -1,3 +1,0 @@
-source: 'pagi juga'
-translated: 'Good morning to you, too'
-state: delivered

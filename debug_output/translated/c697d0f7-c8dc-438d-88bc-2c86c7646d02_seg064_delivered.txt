@@ -1,3 +1,0 @@
-source: 'saya sudah menikah'
-translated: "I'm married"
-state: delivered
